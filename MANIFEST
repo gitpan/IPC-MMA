@@ -1,0 +1,22 @@
+Changes
+hashHammer
+Makefile.PL
+MANIFEST
+MMA.pm
+MMA.pod
+MMA.xs
+mma_alloc.c
+mma_alloc.h
+README
+t/0_passthrus.t
+t/1_scalars.t
+t/2_mmArray.t
+t/3_boolArray.t
+t/4_fixedArray.t
+t/5_hash.t
+t/6_tiedScalars.t
+t/7_tiedArray.t
+t/8_tiedHash.t
+t/9_lock.t
+typemap
+META.yml                                 Module meta-data (added by MakeMaker)

@@ -1,0 +1,13 @@
+Revision history for IPC::MMA
+
+0.5   Feb 13 2009: New package with largely IPC::MM compatible names.  
+      Retains direct call and tied interfaces for scalars and hashes.  
+      Adds direct-call and tied array functions with multiple storage 
+      types, including general purpose, signed and unsigned integer, 
+      floating point, boolean, and fixed-length records 
+      (a.k.a. maximum-length strings).  
+      
+      BTree functions are retained as a aliases for Hash functions.  
+      Hash functions return keys in sorted order, which was the 
+      main difference of IPC::MM's BTree mode compared to Hash mode.  
+      
