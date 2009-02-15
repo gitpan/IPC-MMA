@@ -533,6 +533,30 @@ is incremented by one unless the array was empty.
 
 =back
 
+=head2 Using
+
+IPC::MMA names can be imported individually, as in 
+
+    use IPC::MMA qw(mm_create mm_make_array MM_ARRAY);
+    
+More conveniently you can use the following group tags:
+
+    :basic  :scalar  :array  :hash  :btree  :all
+
+Example of using group tags:
+
+    use IPC::MMA qw(:basic :hash);
+
+Neither of the following import any names:
+
+    use IPC::MMA;
+    use IPC::MMA();
+
+In which case you can spell out IPC::MMA names fully:
+
+    $mm = IPC::MMA::mm_create (1<<16, "/tmp/lockfile");
+
+
 =head2 Locking
 
 =over 4

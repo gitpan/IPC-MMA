@@ -6,4 +6,6 @@
 void *mma_calloc(MM *, size_t, size_t);
 void *mma_malloc(MM *, size_t);
 void  mma_free  (MM *, void *);
+int mma_sizeok (void *ptr, const size_t usize);
+
 #endif /* _MMA_ALLOC_H_ */

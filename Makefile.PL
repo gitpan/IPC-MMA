@@ -13,5 +13,5 @@ WriteMakefile(
     'DEFINE'	   => '',                 # e.g., '-DHAVE_SOMETHING' 
     'INC'	       => $cflags,            # e.g., '-I/usr/include/other'
     'OBJECT'       => 'MMA.o mma_alloc.o',
-    'OPTIMIZE'     => '-Os'               # '-g' for debugging
+    'OPTIMIZE'     => '-g'                # '-Os' for production
 );

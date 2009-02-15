@@ -1,5 +1,9 @@
 Revision history for IPC::MMA
 
+0.5.1 Feb 14 2009: Added use tags (:basic :scalar etc) to .pod doc.
+      Minor improvement in keeping shared memory blocks in place, 
+      when they don't have to be re-allocated.
+
 0.5   Feb 13 2009: New package with largely IPC::MM compatible names.  
       Retains direct call and tied interfaces for scalars and hashes.  
       Adds direct-call and tied array functions with multiple storage 

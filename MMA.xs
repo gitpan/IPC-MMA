@@ -324,7 +324,8 @@ int mm_scalar_store (mm_scalar *scalar, SV *sv, int prelocked) {
                     scalar->ptr = ZERO_LEN;
                     ret = 1;
                 } else if (ptr) {
-                    if (svLen != mm_sizeof(scalar->mm, ptr)) {
+                    if (!mma_sizeok(ptr, svLen)) {
+//                  if (svLen != mm_sizeof(scalar->mm, ptr)) {
                         /* need a different block of memory  
                         we don't use realloc because it loses memory 
                         ptr = mma_realloc (scalar->mm, ptr, svLen); */
@@ -602,7 +603,8 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
                                 /* new value is a real string 
                                     we don't use realloc because it loses memory */
                                 if (valPtr <= ZERO_LEN) valPtr = mma_malloc (array->mm, svLen);
-                                else if (svLen != mm_sizeof (array->mm, valPtr)) {
+//                                else if (svLen != mm_sizeof (array->mm, valPtr)) {
+                                else if (!mma_sizeok(valPtr, svLen)) {
                                     if (newptr = mma_malloc(array->mm, svLen)) 
                                         mma_free(array->mm, valPtr);
                                     valPtr = newptr;
@@ -1242,7 +1244,8 @@ int mm_hash_store (mm_hash *hash, SV *key, SV *val, UV flags, int prelocked) {
                                 if (!valLen) {
                                     mma_free (hash->mm, mmValPtr);
                                     mmValPtr = NULL;
-                                } else if (valLen != mm_sizeof (hash->mm, mmValPtr)) {
+//                                } else if (valLen != mm_sizeof (hash->mm, mmValPtr)) {
+                                } else if (mma_sizeok(mmValPtr, valLen)) {
                                     /* we don't use realloc because it loses memory */
                                     if (ptr = mma_malloc (hash->mm, valLen)) mma_free (hash->mm, mmValPtr);
                                     mmValPtr = ptr; 
@@ -1481,6 +1484,7 @@ void mm_free_hash (mm_hash *hash, int prelocked) {
 MODULE = IPC::MMA       PACKAGE = IPC::MMA
 
 PROTOTYPES: DISABLE
+VERSIONCHECK: DISABLE
 
 # so that MMA.pm can call constant in MMA.xs
 double
