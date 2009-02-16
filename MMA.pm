@@ -8,7 +8,7 @@ require DynaLoader;
 our @ISA = qw(Exporter DynaLoader);
 
 # set the version for version checking
-our $VERSION = 0.51;
+our $VERSION = 0.52;
 
 # nothing is exported into callers namespace by default
 our @EXPORT = qw( );

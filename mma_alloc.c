@@ -194,8 +194,8 @@ void *mma_calloc(MM *mm, size_t number, size_t usize)
 }
 
 /* 
- * Return whether existing memory chunk has same allocation 
- *  as requested siz,e and if so store new size
+ * Return whether an existing memory chunk has the same allocation 
+ *  as a requested new size, and if so return 1 and store the new size
  */
 int mma_sizeok (void *ptr, const size_t usize) 
 {

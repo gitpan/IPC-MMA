@@ -1484,7 +1484,6 @@ void mm_free_hash (mm_hash *hash, int prelocked) {
 MODULE = IPC::MMA       PACKAGE = IPC::MMA
 
 PROTOTYPES: DISABLE
-VERSIONCHECK: DISABLE
 
 # so that MMA.pm can call constant in MMA.xs
 double
@@ -1611,8 +1610,10 @@ mm_array_status (array)
         int i=0;
     PPCODE:
         mm_array_status (array, statArray, ix);
-        EXTEND(SP, 4);
-        while (i < 4) XPUSHs (sv_2mortal (newSViv (statArray[i++])));
+        if (statArray[0] >= 0) {
+            EXTEND(SP, 4);
+            while (i < 4) XPUSHs (sv_2mortal (newSViv(statArray[i++])));
+        }
 
 SV *
 mm_array_fetch (array, index)
@@ -1688,7 +1689,7 @@ mm_array_exists (array, index)
     OUTPUT:
         RETVAL
 
-int
+void
 mm_array_splice (array, offset, length, ...)
     mm_array *array
     SV *offset
@@ -1707,11 +1708,10 @@ mm_array_splice (array, offset, length, ...)
         int i=0, j=0;
     PPCODE:
         while (i < add_count) addSVs[i++] = ST(i+3);
-        if (!mm_array_splice (array, index, del_count, delSVs, add_count, addSVs, ix&1)
-         && PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
-        
-        EXTEND (SP, del_count);
-        while (j < del_count) PUSHs(sv_2mortal(delSVs[j++]));
+        if (mm_array_splice (array,index,del_count,delSVs,add_count,addSVs,ix&1)) {
+            EXTEND (SP, del_count);
+            while (j < del_count) PUSHs(sv_2mortal(delSVs[j++]));
+        } else if (PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
 
 SV *
 mm_array_delete (array, index)
@@ -1859,9 +1859,11 @@ mm_hash_get_entry(hash, index)
         SV* ret[2];
     PPCODE:
         mm_hash_get_entry(hash, index, ix, ret);
-        EXTEND(SP, 2);
-        XPUSHs (sv_2mortal (ret[0]));
-        XPUSHs (sv_2mortal (ret[1]));    
+        if (SvOK(ret[0])) {
+            EXTEND(SP, 2);
+            XPUSHs (sv_2mortal (ret[0]));
+            XPUSHs (sv_2mortal (ret[1]));    
+        }
 
 SV *
 mm_hash_exists(hash, key)
