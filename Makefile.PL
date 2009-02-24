@@ -10,8 +10,8 @@ WriteMakefile(
     'NAME'	       => 'IPC::MMA',
     'VERSION_FROM' => 'MMA.pm',           # finds $VERSION
     'LIBS'	       => ["$ldflags $libs"], # e.g., '-lm' 
-    'DEFINE'	   => '',                 # e.g., '-DHAVE_SOMETHING' 
     'INC'	       => $cflags,            # e.g., '-I/usr/include/other'
-    'OBJECT'       => 'MMA.o mma_alloc.o',
-    'OPTIMIZE'     => '-Os'               # '-Os' for release, '-g' for debug
+    'OBJECT'       => 'mma_alloc.o MMA.o',
+    'OPTIMIZE'     => '-O2',              # '-Os' for release, '-g' for debug
+    'PREREQ_PM'    => {'Test::Warn'=>'0.11'}
 );

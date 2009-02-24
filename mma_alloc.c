@@ -197,16 +197,21 @@ void *mma_calloc(MM *mm, size_t number, size_t usize)
  * Return whether an existing memory chunk has the same allocation 
  *  as a requested new size, and if so return 1 and store the new size
  */
-int mma_sizeok (void *ptr, const size_t usize) 
-{
+int mma_sizeok (void *ptr, const size_t usize) {
     mem_chunk *mc;
     
     if (ptr == NULL) return 0;
     mc = (mem_chunk *)((char *)ptr - SIZEOF_mem_chunk);
     
-    if (usize > mc->mc_size
-     || usize < mc->mc_size - sizeof(union mem_chunk_mc_u)) return 0;
+    if (usize >  mc->mc_size - SIZEOF_mem_chunk
+     || usize <= mc->mc_size - SIZEOF_mem_chunk - sizeof(union mem_chunk_mc_u)) return 0;
     
     mc->mc_usize = usize;
     return 1;    
 }
+
+/* 
+ * Return allocation block size and allocation base size
+ */
+inline int mma_alloc_mask(void) {return sizeof(union mem_chunk_mc_u)-1;}
+inline int mma_alloc_base(void) {return SIZEOF_mem_chunk;}

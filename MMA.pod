@@ -13,16 +13,16 @@ IPC::MMA - Shared Memory using Ralf Engelschall's mm library
  tie $tiedScalar, 'IPC::MMA::Scalar', $scalar;
  tie @tiedArray, 'IPC::MMA::Array', $array;
  tie %tiedHash, 'IPC::MMA::Hash', $hash;
- 
+
  mm_lock ($mm, MM_LOCK_RD);
  mm_lock ($mm, MM_LOCK_RW);
  mm_unlock ($mm);
-                                                
+
  DIRECT CALLS                                   TIED EQUIVALENTS
- $ok = mm_scalar_store($scalar, $value);        $tiedScalar = $value;                         
+ $ok = mm_scalar_store($scalar, $value);        $tiedScalar = $value;
  $value = mm_scalar_fetch($scalar);             $value = $tiedScalar;
  mm_free_scalar($scalar)
-                                                
+
  $ok = mm_array_store($array, $index, $value);  $tiedArray[$index] = $value;
  $value = mm_array_fetch ($array, $index);      $value = $tiedArray[$index];
  $entries = mm_array_push ($array, list);       $entries = push @tiedArray, list;
@@ -32,17 +32,17 @@ IPC::MMA - Shared Memory using Ralf Engelschall's mm library
  if (mm_array_exists ($array, $index)) {...}    if (exists $tiedArray[$index]) { ... }
  $value = mm_array_delete ($array, $index);     $value = delete $tiedArray[$index];
  @dels=mm_array_splice($array,$ix,$delCt,list); @dels=splice @tiedArray,$ix,$delCt,list;
- mm_array_clear ($array [, $entries]);          $tiedArray = (); 
+ mm_array_clear ($array [, $entries]);          $tiedArray = ();
  $entries = mm_array_fetchsize ($array)         $entries = scalar(@tiedArray)
  ($entries,$shiftCt,$type,$opt) = mm_array_status($array);
  mm_free_array ($array)
-                                                
+
  $ok = mm_hash_store ($hash, $key, $value);     $tiedHash{$key} = $value;
  $value = mm_hash_fetch ($hash, $key);          $value = $tiedHash{$key};
  $value = mm_hash_delete ($hash, $key);         $value = delete $tiedHash{$key};
  if(mm_hash_exists ($hash, $key)) {...}         if (exists $tiedHash{$key}) {...}
  while(($key,$val)=mm_hash_entry($hash,$ix++))  while(($key,$val)=each %tiedHash)
-     {...}                                          {...}                                              
+     {...}                                          {...}
                                                 @keys = keys %tiedHash;
                                                 @values = values %tiedHash;
  $entries = mm_hash_scalar ($hash);             $entries = scalar %tiedHash;
@@ -53,37 +53,37 @@ IPC::MMA - Shared Memory using Ralf Engelschall's mm library
 
 =head1 DESCRIPTION
 
-IPC::MMA allows data to be shared among related Unix/Linux processes 
-in a secure and natural way.  It provides methods to create and 
-destroy shared memory segments and to create, access, and maintain 
-data structures within segments.  Perl scalars, arrays, and hashes 
-can be stored in shared memory.  This version of IPC::MMA will not 
+IPC::MMA allows data to be shared among related Unix/Linux processes
+in a secure and natural way.  It provides methods to create and
+destroy shared memory segments and to create, access, and maintain
+data structures within segments.  Perl scalars, arrays, and hashes
+can be stored in shared memory.  This version of IPC::MMA will not
 store references.
 
-IPC::MMA is a superset of Arthur Choung's IPC::MM module, adding 
-arrays and allowing any Perl scalar to be used as a hash/BTree key 
-rather than just ASCII strings.  IPC::MMA hashes are like IPC::MM 
-BTrees in that they return keys in sorted order in I<each>, I<keys>, 
+IPC::MMA is a superset of Arthur Choung's IPC::MM module, adding
+arrays and allowing any Perl scalar to be used as a hash/BTree key
+rather than just I<C strings>.  IPC::MMA hashes are like IPC::MM
+BTrees in that they return keys in sorted order in I<each>, I<keys>,
 and I<next> operations.
 
 An IPC::MMA array can store data in any of six ways, including
 general-purpose scalars, signed or unsigned integers, floating-point
-numbers / large integers, fixed-length scalars/records, and booleans
+numbers / large integers, fixed-length strings/records, and booleans
 at one bit per array element.
 
 =head2 Locking, Mutual Exclusion
 
-Almost any inter-process communication scheme needs locking or mutual 
-exclusion among the processes.  The underlying I<mm> library provides 
+Almost any inter-process communication scheme needs locking or mutual
+exclusion among the processes.  The underlying I<mm> library provides
 I<mm_lock> and I<mm_unlock> routines for this purpose.
 
-Most IPC::MMA routines whose names start with "mm_" include I<mm_lock> 
-and I<mm_unlock> calls.  Operations on variables tied with class names 
-starting with "IPC::MM::" include similar locking and unlocking. 
+Most IPC::MMA routines whose names start with "mm_" include I<mm_lock>
+and I<mm_unlock> calls.  Operations on variables tied with class names
+starting with "IPC::MM::" include similar locking and unlocking.
 
-But sometimes Perl scripts that use IPC::MMA "have a larger agenda" 
-that require them to do locking and unlocking themselves.  The most 
-obvious example is updating a record in a shared array or hash:
+But sometimes Perl scripts "have a larger agenda" that require them
+to do locking and unlocking themselves.  The most obvious example is
+updating a record in a shared array or hash:
 
   if (mm_lock ($mm, MM_LOCK_RW) {
       $rec = mma_hash_fetch(hash, $key);  OR  $rec = $lockTiedHash{$key};
@@ -94,44 +94,44 @@ obvious example is updating a record in a shared array or hash:
       mm_unlock($mm);
   }
 
-Unless the script using IPC::MMA can lock the sequence like this
-to prevent other processes from accessing the shared hash record
-during the sequence, such updating is unreliable.
+Unless a script can lock this kind of sequence to prevent other
+processes from accessing the shared hash record during the sequence,
+such updating is unreliable.
 
-A calling Perl script may call I<mm_lock> and I<mm_unlock> itself, 
-as long as it only directly calls routines starting with "mma_", 
-and/or uses variables tied with I<IPC::MMA> class names, between 
+A calling Perl script may call I<mm_lock> and I<mm_unlock> itself,
+as long as it only directly calls routines starting with "mma_",
+and/or uses variables tied with I<IPC::MMA> class names, between
 its lock and unlock calls.
 
 For tied operation, tie statements can specify class names that
 use externally- or internally-locked operation.  Where necessary,
 separate tied variables can be used for externally- and
-internally-locked operation, tied to the same underlying data 
+internally-locked operation, tied to the same underlying data
 structure.
 
 =head1 METHODS
 
-In all of the following descriptions, the notation I<mm[a]_routine> 
+In all of the following descriptions, the notation I<mm[a]_routine>
 indicates that there is an I<mm_routine> that includes I<mm_lock>
 and I<mm_unlock> operations, and an I<mma_routine> routine that does
-not.  The "mma_" version should be used only between explicit 
+not.  The "mma_" version should be used only between explicit
 I<mm_lock> and I<mm_unlock> calls in your Perl script.
 
 =head2 Direct Calls vs. Tied Interface
 
 The tied interface is more convenient in terms of keystrokes while
-writing your Perl script, but tied operations execute a little slower 
-than direct calls.  There is at least one other reason to consider 
-using direct calls: other purposes may want to use the tied interface 
+writing your Perl script, but tied operations execute a little slower
+than direct calls.  There is at least one other reason to consider
+using direct calls: other purposes may want to use the tied interface
 on the same variables.
 
-For example, the current I<ithreads> option of Perl uses the tied 
-interface on every shared variable.  This means that, except by 
-using special modules, B<tied variables can't be shared under Perl 
+For example, the current I<ithreads> option of Perl uses the tied
+interface on every shared variable.  This means that, except by
+using special modules, B<tied variables can't be shared under Perl
 ithreads!>
 
-As the tied interface is used for more and more purposes in Perl 
-modules, direct-call methods become more attractive when using 
+As the tied interface is used for more and more purposes in Perl
+modules, direct-call methods become more attractive when using
 modules that make them available.
 
 =head2 Creating
@@ -145,10 +145,10 @@ processes.
 
 =item $mm = mm_create(size, file);
 
-creates a shared memory segment.  I<size> is the size of the memory 
-segment to be created, in bytes.  A size of zero allocates the maximum 
-allowed size, which is platform dependent.  A small positive size 
-allocates the minimum allowed size, which is 8KBytes on the author's 
+creates a shared memory segment.  I<size> is the size of the memory
+segment to be created, in bytes.  A size of zero allocates the maximum
+allowed size, which is platform dependent.  A small positive size
+allocates the minimum allowed size, which is 8KBytes on the author's
 platform.
 
 The file need not exist in advance.
@@ -160,13 +160,13 @@ the return value from I<mm_create>.
 
 =item $array = mm[a]_make_array($mm, type[, alloc_entries[, options]]);
 
-creates an empty shared array.  I<$mm> is the return value from 
+creates an empty shared array.  I<$mm> is the return value from
 I<mm_create>.
 
-I<alloc_entries> is an optional argument.  If a value greater than 
-zero is supplied, the array's pointer block is allocated to have room 
-for that many entries.  This will mean faster operation as the array 
-is populated.  If the operand is omitted or zero, the pointer block 
+I<alloc_entries> is an optional argument.  If a value greater than
+zero is supplied, the array's pointer block is allocated to have room
+for that many entries.  This will mean faster operation as the array
+is populated.  If the operand is omitted or zero, the pointer block
 is created with room for 64 entries.
 
 I<type> can be any of:
@@ -175,7 +175,7 @@ I<type> can be any of:
 
 =item I<MM_ARRAY>
 
-This is the general-purpose type.  Values stored in such an array 
+This is the general-purpose type.  Values stored in such an array
 can be any defined Perl scalar, and can be of any length including zero.
 
 =item I<MM_INT_ARRAY>
@@ -185,14 +185,14 @@ binary form which typically use less memory than in an MM_ARRAY.
 
 =item I<MM_UINT_ARRAY>
 
-is like MM_INT_ARRAY except that numbers are stored in unsigned form, 
+is like MM_INT_ARRAY except that numbers are stored in unsigned form,
 which means they can't be negative and their maximum value is twice
 that in an MM_INT_ARRAY.
 
 =item I<MM_DOUBLE_ARRAY>
 
-is like INT and UINT except that large and fractional numbers can be 
-stored.  Perl terminology doesn't include "floating point" or "real", 
+is like INT and UINT except that large and fractional numbers can be
+stored.  Perl terminology doesn't include "floating point" or "real",
 but you can apply these terms to this kind of array if you like.
 
 =item I<MM_BOOL_ARRAY>
@@ -202,21 +202,21 @@ values are stored as single bits packed in the array.
 =item a I<positive integer>
 
 in the type operand indicates an array in which each value is
-stored as a byte array of that length, or at least that maximum length.  
-When a Perl scalar is stored in such an array, if its string 
-representation is shorter than the array length, the stored value 
-is padded out with ASCII NUL bytes (binary zeroes) after the 
-last byte.  If the string representation of a Perl scalar 
+stored as a byte array of that length, or at least that maximum length.
+When a Perl scalar is stored in such an array, if its string
+representation is shorter than the array length, the stored value
+is padded out with ASCII NUL bytes (binary zeroes) after the
+last byte.  If the string representation of a Perl scalar
 being stored is longer than the array length,
 the rightmost bytes are discarded without notice.
 
 I<option> is itself optional, and at this time is used only for arrays
-with a positive integer as the I<type> argument.  For such arrays it 
+with a positive integer as the I<type> argument.  For such arrays it
 can be either I<MM_FIXED_REC> or I<MM_CSTRING>.
 
 When an entry in a fixed-length array using I<MM_FIXED_REC> is fetched
 back into a Perl scalar, the value is always stored as exactly the
-length assocated with the array.  This option is useful for "records" 
+length assocated with the array.  This option is useful for "records"
 containing packed binary data.
 
 When an entry in a fixed-length array using I<MM_CSTRING> is fetched
@@ -243,9 +243,9 @@ I<mm_make_array> above.
  tie $tiedScalar,     'IPC_MM_SCALAR',  $scalar;
  tie $lockTiedScalar, 'IPC_MMA_SCALAR', $scalar;
 
-I<$scalar> is a return value from I<mm_make_scalar>.  
-I<$lockTiedScalar> should be used only between explicit calls to 
-I<mm_lock> and I<mm_unlock>.  I<$tiedScalar> should 
+I<$scalar> is a return value from I<mm_make_scalar>.
+I<$lockTiedScalar> should be used only between explicit calls to
+I<mm_lock> and I<mm_unlock>.  I<$tiedScalar> should
 be used outside such explicitly-locked sequences.
 
 =item B<Tieing an Array>
@@ -253,9 +253,9 @@ be used outside such explicitly-locked sequences.
  tie @tiedArray,     'IPC_MM_ARRAY',  $array;
  tie @lockTiedArray, 'IPC_MMA_ARRAY', $array;
 
-I<$array> is a return value from I<mm_make_array>.  
-I<@lockTiedArray> should be used only between explicit calls to 
-I<mm_lock> and I<mm_unlock>.  I<@tiedArray> should 
+I<$array> is a return value from I<mm_make_array>.
+I<@lockTiedArray> should be used only between explicit calls to
+I<mm_lock> and I<mm_unlock>.  I<@tiedArray> should
 be used outside such explicitly-locked sequences.
 
 =item B<Tieing a Hash>
@@ -263,9 +263,9 @@ be used outside such explicitly-locked sequences.
  tie %tiedHash,     'IPC_MM_HASH',  $hash;
  tie %lockTiedHash, 'IPC_MMA_HASH', $hash;
 
-I<$hash> is a return value from I<mm_make_hash>.  
-I<%lockTiedHash> should be used only between explicit calls to 
-I<mm_lock> and I<mm_unlock>.  I<%tiedHash> should 
+I<$hash> is a return value from I<mm_make_hash>.
+I<%lockTiedHash> should be used only between explicit calls to
+I<mm_lock> and I<mm_unlock>.  I<%tiedHash> should
 be used outside such explicitly-locked sequences.
 
 =back
@@ -280,12 +280,12 @@ be used outside such explicitly-locked sequences.
  $ok = mm_scalar_store ($scalar, $value);  $tiedScalar = $value;
  $ok = mma_scalar_store($scalar, $value);  $lockTiedScalar = $value;
 
-These assign a value to a shared scalar.  In the 
+These assign a value to a shared scalar.  In the
 direct call, I<$scalar> is a return value from I<mm_make_scalar>.
 
 I<mm[a]_scalar_store> returns false and produces a warning message if:
 
-    * $value is undefined, 
+    * $value is undefined,
     * $value is a reference, or
     * there is not enough available shared memory
 
@@ -297,12 +297,12 @@ Tied storing just produces a warning message in these cases.
  $ok = mm_array_store ($array, $ix, $val);  $tiedArray[$ix] = $val;
  $ok = mma_array_store($array, $ix, $val);  $lockTiedArray[$ix]=$val;
 
-These assign a value to an element of a shared array.  I<$ix> 
-selects which element.  In the direct call, I<$array> 
+These assign a value to an element of a shared array.  I<$ix>
+selects which element.  In the direct call, I<$array>
 is a return value from I<mm_make_array>.
 
-If I<$ix> is greater than the current size of the array, the array 
-is extended to accomodate it.  Any elements between the former array 
+If I<$ix> is greater than the current size of the array, the array
+is extended to accomodate it.  Any elements between the former array
 and the new element will have the following value:
 
     MM_ARRAY:         undef
@@ -312,15 +312,15 @@ and the new element will have the following value:
     MM_DOUBLE_ARRAY:  zero
     fixed length:     ASCII NULs
 
-If I<$ix> is negative, the element is selected from the end of the 
-array.  (-1 selects the last element of the array.)  
+If I<$ix> is negative, the element is selected from the end of the
+array.  (-1 selects the last element of the array.)
 L</"Unwrapped Arrays"> describes how to avoid this behavior.
 
 I<mm[a]_array_store> returns false and produces a warning message if:
 
     * $ix or $val is undefined,
     * $ix or $val is a reference,
-    * $ix is negative and its absolute value is greater than the size 
+    * $ix is negative and its absolute value is greater than the size
         of the array,
     * for a MM_INT_ARRAY or MM_UINT_ARRAY, if $val is non-numeric,
         has a fractional part, or is out of range,
@@ -339,9 +339,9 @@ Tied storing just produces a warning message in these cases.
  $ok = mm[a]_hash_store($hash, $key, $val, MM_NO_OVERWRITE);
  $ok = mm[a]_hash_store($hash, $key, $val, MM_MUST_CREATE);
 
-These assign a value to an entry in a shared hash.  I<$key> selects 
-which entry.  If there was no entry for I<$key>, a new entry is 
-typically created.  In the direct call, I<$hash> is a 
+These assign a value to an entry in a shared hash.  I<$key> selects
+which entry.  If there was no entry for I<$key>, a new entry is
+typically created.  In the direct call, I<$hash> is a
 return value from I<mm_make_hash>.
 
 The direct calls with a 4th operand have no tied equivalent.
@@ -363,13 +363,13 @@ Tied storing just produces a warning message in these cases.
  $entries=mm_hash_push ($array,list);  $entries=push @tiedHash,list;
  $entries=mma_hash_push($array,list);  $entries=push @lockTiedHash,list;
 
-These add the values in I<list> at the end of the array.  Because of 
+These add the values in I<list> at the end of the array.  Because of
 the way Perl handles arrays in subroutine and function calls, you can
 
  mm_hash_push($array, @srcArray);      push @tiedArray, @srcArray;
 
-An error message will occur for any undefined values or references 
-in I<list>, and such values will not be added to the array.  The 
+An error message will occur for any undefined values or references
+in I<list>, and such values will not be added to the array.  The
 return value is the new size of the array.
 
 =item B<Unshifting into an Array>
@@ -378,20 +378,20 @@ return value is the new size of the array.
  $entries=mm_hash_unshift ($array,list);  $entries=unshift @tiedHash,list;
  $entries=mma_hash_unshift($array,list);  $entries=unshift @lockTiedHash,list;
 
-These add the values in I<list> at the start of the array.  The values 
-in I<list> are stored in the same order in the array.  Any elements 
-that were already in the array are subsequently accessible at higher 
+These add the values in I<list> at the start of the array.  The values
+in I<list> are stored in the same order in the array.  Any elements
+that were already in the array are subsequently accessible at higher
 indices.
 
-Because of the way Perl handles arrays in subroutine and function 
+Because of the way Perl handles arrays in subroutine and function
 calls, you can write:
 
  mm_hash_unshift($array, @srcArray);      unshift @tiedArray, @srcArray;
 
-An error message will occur for any undefined values or references 
-in I<list>, and such values will not be added to the array.  The 
-return value is the new size of the array.  The array's shift count 
-(accessible via the I<mm_array_status> call) is decremented by the 
+An error message will occur for any undefined values or references
+in I<list>, and such values will not be added to the array.  The
+return value is the new size of the array.  The array's shift count
+(accessible via the I<mm_array_status> call) is decremented by the
 number of entries added to the array.
 
 =back
@@ -408,7 +408,7 @@ number of entries added to the array.
 
 These fetch the value of a shared scalar.  They return I<undef>
 if executed between the I<mm_make_scalar> call and the first
-store to the scalar.  In the direct calls, I<$scalar> is a return 
+store to the scalar.  In the direct calls, I<$scalar> is a return
 value from I<mm_make_scalar>.
 
 =item B<Retrieving from an Array>
@@ -423,13 +423,13 @@ the end of the array as described in L</"Storing into an Array">.
 
 These operations return I<undef> if:
 
-    * $ix is greater that or equal to the number of elements in the 
+    * $ix is greater that or equal to the number of elements in the
         array,
-    * $ix is negative and its absolute value is greater than or 
+    * $ix is negative and its absolute value is greater than or
         equal to the number of elements in the array,
     * for an MM_ARRAY, if the selected element has been deleted, or
     * if the selected element was created by a store to a higher-
-        numbered element or a storesize with a large number of 
+        numbered element or a storesize with a large number of
         entries, but element $ix has been never been stored into.
 
 =item B<Retrieving from a Hash by Key>
@@ -441,7 +441,7 @@ These operations return I<undef> if:
 These fetch the value of an entry in a shared hash.  I<$key> selects
 the entry.  These operations return I<undef> if:
 
-    * $key is undefined, 
+    * $key is undefined,
     * $key contains a reference, or
     * there is no entry in the hash with a key equal to $key.
 
@@ -451,10 +451,13 @@ the entry.  These operations return I<undef> if:
  ($key, $val) = mm_hash_get_entry ($hash, $ix);  (none)
  ($key, $val) = mma_hash_get_entry($hash, $ix);  (none)
 
-These fetch the key and value of an entry in a shared hash, given its
-index within the sorted array of keys.  (An IPC::MMA hash maintains
-its entries in sorted order on its keys.)  These operations return
-I<undef> if:
+These fetch the key and value of an entry in a shared hash (or just
+the key in scalar context), given its index within the sorted array
+of keys.  (An IPC::MMA hash maintains its entries in sorted order
+on its keys.)
+
+These operations return an empty list in list context, or I<undef>
+in scalar context, if:
 
     * $ix is negative, or
     * $ix is greater than or equal to the number of elements in the hash
@@ -471,10 +474,10 @@ I<undef> if:
  $val = mm_array_delete ($array, $ix);  $val = delete $tiedArray[$ix];
  $val = mma_array_delete($array, $ix);  $val = delete $lockTiedArray[$ix];
 
-These operations delete the array element selected by I<$ix>.  
-If I<$ix> is negative, the element is selected from the end of the 
-array as described in L</"Storing into an Array">.  If the selected 
-element is the last one in an array, the number of elements in the 
+These operations delete the array element selected by I<$ix>.
+If I<$ix> is negative, the element is selected from the end of the
+array as described in L</"Storing into an Array">.  If the selected
+element is the last one in an array, the number of elements in the
 array is decreased.  If not, the deleted element is set to:
 
     MM_ARRAY:         undef
@@ -487,7 +490,7 @@ array is decreased.  If not, the deleted element is set to:
 The value of the deleted element is returned, or I<undef> if:
 
     * $ix is greater than or equal to the size of the array,
-    * $ix is negative, and its absolute value is greater than or 
+    * $ix is negative, and its absolute value is greater than or
         equal to the size of the array, or
     * in an MM_ARRAY, if the element was already deleted
 
@@ -497,10 +500,10 @@ The value of the deleted element is returned, or I<undef> if:
  $val = mm_hash_delete ($array,$key);  $val = delete $tiedHash{$key};
  $val = mma_hash_delete($array,$key);  $val = delete $lockTiedHash{$key};
 
-These operations delete the hash entry selected by I<$key>.  The 
+These operations delete the hash entry selected by I<$key>.  The
 value of the deleted entry is returned, or I<undef> if:
 
-    * $key is undefined, 
+    * $key is undefined,
     * $key contains a reference, or
     * the hash doesn't contain an entry with a key equal to $key
 
@@ -525,20 +528,20 @@ returned.  Any other values in the array are thereafter accessible at
 smaller indices.  I<undef> is returned if:
 
     * the array is empty, or
-    * in an MM_ARRAY, the first element in the array was already 
+    * in an MM_ARRAY, the first element in the array was already
         deleted.  (It is removed from the array in this case)
 
-The array's shift count (accessible via the I<mm_array_status> call) 
+The array's shift count (accessible via the I<mm_array_status> call)
 is incremented by one unless the array was empty.
 
 =back
 
 =head2 Using
 
-IPC::MMA names can be imported individually, as in 
+IPC::MMA names can be imported individually, as in
 
     use IPC::MMA qw(mm_create mm_make_array MM_ARRAY);
-    
+
 More conveniently you can use the following group tags:
 
     :basic  :scalar  :array  :hash  :btree  :all
@@ -566,32 +569,32 @@ In which case you can spell out IPC::MMA names fully:
 I<$mm> is the return value from I<mm_create>.
 I<mode> can be either I<MM_LOCK_RD> or I<MM_LOCK_RW>.
 
-I<RW> establishes exclusive write access to the shared memory for 
-this process.  I<RD> establishes shared read access to the shared 
-memory with other processes that need read access.  All processes 
-granted a I<RD> lock are guaranteed that no writer will change the 
+I<RW> establishes exclusive write access to the shared memory for
+this process.  I<RD> establishes shared read access to the shared
+memory with other processes that need read access.  All processes
+granted a I<RD> lock are guaranteed that no writer will change the
 shared memory until their lock is released.
 
-A process requesting a I<RD> lock must wait if an I<RW> 
+A process requesting a I<RD> lock must wait if an I<RW>
 lock is in effect.  Otherwise the lock is granted immediately.
 
-A process requesting an I<RW> lock must wait until all processes with 
-I<RD> locks have relinquished them.  This includes processes that 
-request a I<RD> lock between when the I<RW> locker makes its lock 
+A process requesting an I<RW> lock must wait until all processes with
+I<RD> locks have relinquished them.  This includes processes that
+request a I<RD> lock between when the I<RW> locker makes its lock
 request, and when the I<RW> lock is granted.
 
 If I<mm_lock> is called by a process that already has the same lock,
-the call returns true and there is no other result.  There is no 
-"depth" or counting to I<mm> locks.  A I<RD> lock can be upgraded 
-to an I<RW> lock without unlocking, but the requesting process has 
-to wait for all I<RD> locks to be released before the I<RW> lock 
+the call returns true and there is no other result.  There is no
+"depth" or counting to I<mm> locks.  A I<RD> lock can be upgraded
+to an I<RW> lock without unlocking, but the requesting process has
+to wait for all I<RD> locks to be released before the I<RW> lock
 is granted.
 
 =item B<$ok = mm_unlock($mm);>
 
 I<$mm> is the return value from I<mm_create>.  Any lock that the
-calling process has on the shared memory is released.  If the process 
-does not hold a lock, true is returned anyway.  
+calling process has on the shared memory is released.  If the process
+does not hold a lock, true is returned anyway.
 
 =item B<Usage>
 
@@ -626,19 +629,22 @@ These can delete and/or insert elements at any point in an array.
 I<$ix> specifies where the changes are to occur.
 
 If I<$delCt> is greater than zero and less than or equal to the number
-of elements at and above I<$ix>, then that many elements are 
-deleted and returned.  If I<$delCt> is zero, splice returns I<undef>.
+of elements at and above I<$ix>, then that many elements are
+deleted and returned.  If I<$delCt> is zero or problems arise in
+executing the splice, splice returns an empty list in list context,
+or I<undef> in scalar context.
 
 If there are more than 3 operands, the values in I<list> are inserted
-in the array starting at element I<$ix>.  Error messages will oocur
+in the array starting at element I<$ix>.  Error messages will occur
 for undefined values and references in I<list>.
 
 If there are any elements at and above I<$ix> that aren't deleted,
 they will be accessible at different indices unless the number of
 elements deleted and inserted are equal.
 
-If I<$ix> is zero, the splice operation affects the array's shift 
-count, which can be accessed via the I<mm_array_status> call.
+If I<$ix> is zero and the array was not empty before the call, the
+splice operation affects the array's shift count, which can be accessed
+via the I<mm_array_status> call.
 
 =head2 Existance
 
@@ -660,13 +666,13 @@ form, I<$array> is a return value from I<mm_make_array>.
 
 These operations return false if:
 
-    * $ix is greater than or equal to the number of elements in the 
+    * $ix is greater than or equal to the number of elements in the
         array,
-    * $ix is negative and its absolute value is greater than or 
+    * $ix is negative and its absolute value is greater than or
         equal to the number of elements in the array,
     * for an MM_ARRAY, if the selected element has been deleted, or
     * if the selected element was created by a store to a higher-
-        numbered element or a storesize with a large number of entries, 
+        numbered element or a storesize with a large number of entries,
         but index $ix has been never been stored into.
 
 =item B<Existance in a Hash>
@@ -690,8 +696,8 @@ from I<mm_make_hash>.
  DIRECT CALL                             TIED EQUIVALENT
  $entries = mm_array_fetchsize($array);  $entries = scalar @tiedArray;
 
-These return the number of elements in the array (any undefined/deleted 
-entries are included).  In the direct-call form, I<$array> is a 
+These return the number of elements in the array (any undefined/deleted
+entries are included).  In the direct-call form, I<$array> is a
 return value from I<mm_make_array>.
 
 =item B<Size of a Hash>
@@ -707,13 +713,16 @@ form, I<$hash> is a return value from I<mm_make_hash>.
  DIRECT CALL                                                   TIED EQUIVALENT
  ($entries,$shiftCount,$type,$option)=mm_array_status($array); (none)
 
-This call returns status about an array.  I<$entries> is the number 
-of elements in the array, as described for I<fetchsize/scalar>.  
-I<$shiftCount> is a count of how many entries have been shifted out 
-of the array.  I<$shiftCount> is negative if more elements have been 
-unshifted in than shifted out.  I<$type> and I<$option> are as 
-described for I<mm_make_array>.  I<$array> is a return value
-from I<mm_make_array>.
+This call returns status about an array.  I<$entries> is the number
+of elements in the array, as described for I<fetchsize/scalar>.
+I<$entries> is returned in scalar context.
+
+In list context I<$shiftCount> is a count of how many entries have
+been shifted out of the array, and I<$type> and I<$option> are as
+described for I<mm_make_array>.  I<$shiftCount> is negative if more
+elements have been unshifted in than shifted out.
+
+I<$array> is a return value from I<mm_make_array>.
 
 =back
 
@@ -727,9 +736,9 @@ from I<mm_make_array>.
  mm_array_clear ($array[, $entries]);  @tiedArray = ();
  mma_array_clear($array[, $entries]);  @lockTiedArray = ();
 
-These delete all elements in the array, leaving it empty.  In the 
+These delete all elements in the array, leaving it empty.  In the
 direct call, I<$array> is a return value from I<mm_make_array>.
-The optional I<$entries> determines the allocated size of the array 
+The optional I<$entries> determines the allocated size of the array
 block, as described for I<mm_make_array>.
 
 =item B<Clearing a Hash>
@@ -740,7 +749,7 @@ block, as described for I<mm_make_array>.
 
 These delete all entries in the hash, leaving it empty.  In the direct
 call, I<$hash> is a return value from I<mm_make_hash>.
-The optional I<$entries> determines the alocated size of the pointer 
+The optional I<$entries> determines the alocated size of the pointer
 block, as described for I<mm_make_array>.
 
 =back
@@ -750,7 +759,7 @@ block, as described for I<mm_make_array>.
 Except by notification and acknowledgement among the processes sharing
 data in a memory pool, the calls in this section should only be used
 by the last surviving process.  Otherwise, other processes will be
-left with pointers/handles to structures that no longer exist, and 
+left with pointers/handles to structures that no longer exist, and
 may be subject to access faults as a result.
 
 None of the calls in this section have tied equivalents.
@@ -775,7 +784,7 @@ practice to I<untie> it before this call.  Memory occupied by this
 array is made available for any continuing shared-memory operations.
 I<$array> is a return value from I<mm_make_array>.
 
-There's no need to clear the array before this call (I<free> calls 
+There's no need to clear the array before this call (I<free> calls
 I<clear>).
 
 =item B<Freeing a Hash>
@@ -787,7 +796,7 @@ practice to I<untie> it before this call.  Memory occupied by this
 hash is made available for any continuing shared-memory operations.
 I<$hash> is a return value from I<mm_make_hash>.
 
-There's no need to clear the array before this call (I<free> calls 
+There's no need to clear the array before this call (I<free> calls
 I<clear>).
 
 =item B<Destroying the Shared Memory>
@@ -829,25 +838,25 @@ These calls are used by the Perl interpreter to implement Perl's
 I<each>, I<keys> and I<values> operations.  I<first> returns
 the key with the lowest value, or I<undef> if the hash is empty.
 I<next> returns the key that's next higher than I<$key>, or
-I<undef> if it can't find I<$key> or I<$key> is the highest-valued 
+I<undef> if it can't find I<$key> or I<$key> is the highest-valued
 key in the hash.
 
-A Perl script using IPC::MMA can use the "mma_" versions of these 
-calls similarly between I<mm_lock($mm, MM_LOCK_RD)> and 
-I<mm_unlock($mm)> calls.  An I<each> sequence and even a I<keys> 
-operation should be similarly locked and use a hash tied with 
+A Perl script using IPC::MMA can use the "mma_" versions of these
+calls similarly between I<mm_lock($mm, MM_LOCK_RD)> and
+I<mm_unlock($mm)> calls.  An I<each> sequence and even a I<keys>
+operation should be similarly locked and use a hash tied with
 I<IPC::MMA::Hash> to assure correct operation.
 
 A hash traversal sequence using internally-locked operations
-(direct calls starting with "mm_" or a hash tied with 
-I<IPC::MM::Hash>) are unreliable because another process can delete 
-a hash entry between the time I<first> or I<next> returns its key, 
-and the next I<next> call.  The latter I<next> will then return 
-I<undef>, and the traversing sequence (even a I<keys> operation) 
+(direct calls starting with "mm_" or a hash tied with
+I<IPC::MM::Hash>) are unreliable because another process can delete
+a hash entry between the time I<first> or I<next> returns its key,
+and the next I<next> call.  The latter I<next> will then return
+I<undef>, and the traversing sequence (even a I<keys> operation)
 will end up with part of the hash.
 
 A read-locked I<keys> operation is probably OK, but a read-locked
-I<each> sequence (or a read-locked sequence using I<mma_hash_next_key>) 
+I<each> sequence (or a read-locked sequence using I<mma_hash_next_key>)
 can lock out a process requesting a write lock for a long time.
 
 A user script is much better off to use the I<mm_hash_get_entry>
@@ -872,9 +881,9 @@ for a long period:
     # process $key and $value
  }
 
-If the processing in the "each equivalent" sequence needs to update 
+If the processing in the "each equivalent" sequence needs to update
 any hash entries, the whole sequence should be expicitly locked.
-Deletions are OK as long as the code decrements C<$i> to avoid 
+Deletions are OK as long as the code decrements C<$i> to avoid
 skipping an entry.
 
 =item B<$maxsize = mm_maxsize($mm);>
@@ -891,20 +900,10 @@ call in a reporting routine to tell if you allocated more memory
 than your application needs.  (Allocating too little will be known
 by simpler means: 'out of memory' error messages.)
 
-=item B<$alloc_size = mm_alloc_size ($mm);>
-
-This call is provided by IPC::MMA, and returns the number of bytes
-that I<mm> uses as its "chunk size" for memory allocation.  The
-test routines run during IPC::MMA installation use this value to
-compute how much memory should be taken from and returned to the
-I<mm_available> value by each operation being tested.  It returns
-8 on the author's platform.  It may return a higher value on
-other platforms.
-
 =item B<$rc = mm_permission ($mm, mode, owner, group);>
 
 This routine is part of the I<mm> library, and sets the
-permissions of the file named in the I<mm_create> call.  It should 
+permissions of the file named in the I<mm_create> call.  It should
 be called after I<mm_create>.
 
 I<$mm> is the return value from I<mm_create>.  I<mode> is an octal
@@ -928,6 +927,31 @@ interesting information about the shared memory.  Unfortunately
 it does this on STDERR.  If you know how to redirect STDERR
 (temporarily!) you can make better use of this call than if
 you don't.
+
+=item B<Allocation Sizes>
+
+The calls in this section are provided by IPC::MMA for the test
+routines that are run during IPC::MMA installation.
+
+  $allocSize = mm_alloc_size();
+ ($allocSize, $entryBase, $pSize, $ivSize, $nvSize, $defEnts) = mm_alloc_size();
+
+These values represent:
+
+  $allocSize   unit of memory allocation (in bytes)
+  $entryBase   "overhead" or base of each allocated block (in bytes)
+  $pSize       size of a memory address/pointer (in bytes)
+  $ivSize      size of an IV (a Perl integer, in bytes)
+  $nvSize      size of an NV (a Perl floating point vale, in bytes)
+  $defEnts     default number of entries allocated for an array or hash
+
+This function returns (8, 8, 4, 4, 8, 64) on the author's platform.
+It may return larger values on other platforms.
+
+  $roundedSize = mm_round_up ($size);
+
+The argument is rounded up, if necessary, to the next multiple
+of the unit of memory allocation (I<$allocSize> in the previous call).
 
 =back
 
@@ -954,92 +978,92 @@ in a future release of IPC::MMA.
 
 =head2 Shift Count
 
-It's common to I<push> new entries into the back of an array and 
-I<shift> them from the front.  An array that's used this way can be 
-called a I<FIFO> or a I<queue>.  Sometimes such processing needs 
-a way to relate elements shifted from the front to elements that 
-were pushed into it.  This is what the I<shiftCount> value that's 
-available in the I<mm_array_status> call is for.  
+It's common to I<push> new entries into the back of an array and
+I<shift> them from the front.  An array that's used this way can be
+called a I<FIFO> or a I<queue>.  Sometimes such processing needs
+a way to relate elements shifted from the front to elements that
+were pushed into it.  This is what the I<shiftCount> value that's
+available in the I<mm_array_status> call is for.
 
-The I<shiftCount> of an array is incremented by one each time an 
-element is shifted off the front.  If a script reads this value 
-just before shifting an element from an array, the value obtained 
-is like a "long-term index" of the element shifted out.  If a script 
-does an I<mm_array_status> just before pushing an element into the 
-array, the sum of the first returned two values is the same 
-"long-term index" that I<shiftCount> will have just before 
+The I<shiftCount> of an array is incremented by one each time an
+element is shifted off the front.  If a script reads this value
+just before shifting an element from an array, the value obtained
+is like a "long-term index" of the element shifted out.  If a script
+does an I<mm_array_status> just before pushing an element into the
+array, the sum of the first returned two values is the same
+"long-term index" that I<shiftCount> will have just before
 the element is shifted out.
 
-The author hopes to post a module named I<Apache2::CloseKeepAlive> 
-to CPAN in 1H09 that will be an example of using the 
+The author hopes to post a module named I<Apache2::CloseKeepAlive>
+to CPAN in 1H09 that will be an example of using the
 I<shiftCount> facility of IPC::MMA arrays.
 
 
 =head2 Hash Key Ordering
 
-IPC:MMA hashes (like IPC:MM BTrees) maintain their keys in the 
-order that is natural for I<byte arrays>.  IPC::MMA uses the C 
-library routine I<memcmp> for key comparisons.  No international, 
-UTF, ISO, or Unicode sorting is available at this time. 
+IPC:MMA hashes (like IPC:MM BTrees) maintain their keys in the
+order that is natural for I<byte arrays>.  IPC::MMA uses the C
+library routine I<memcmp> for key comparisons.  No international,
+UTF, ISO, or Unicode sorting is available at this time.
 
-Applications that use numeric values as hash keys, and want them 
-to be sorted numerically, need to take special measures.  
+Applications that use numeric values as hash keys, and want them
+to be sorted numerically, need to take special measures.
 Use the following technique when storing:
 
     $mmaKey = pack 'N', $numeric_key;
 
-You may need to unpack the key when retrieving.  This works for 
+You may need to unpack the key when retrieving.  This works for
 unsigned integers.  For signed 32-bit integers try this when storing:
 
     $mmaKey = pack 'N', $numeric_key + 2147483648; # no warranty!
 
-If necessary do the opposite when retrieving.  
+If necessary do the opposite when retrieving.
 
-If you have numeric hash keys with fractional parts that you want 
+If you have numeric hash keys with fractional parts that you want
 ordered, consult L<http://www.perlmonks.org>.
 
 =head2 Hash Internals
 
-IPC::MMA "hashes" do not hash keys.  They maintain their entries 
-in sorted order on their keys, but they are not BTrees.  They use 
-a very simple internal organization that is optimized for key-value 
+IPC::MMA "hashes" do not hash keys.  They maintain their entries
+in sorted order on their keys, but they are not BTrees.  They use
+a very simple internal organization that is optimized for key-value
 pairs in an internal memory of limited extent.
 
-An IPC::MMA hash has a small I<header block> in shared memory, 
-that includes a pointer to a I<pointer block> than contains 
-an array of pointers to I<key blocks>.  The I<pointer block> 
-is reallocated as needed to contain pointers to the current 
-number of entries in the hash.  It expands by 64 pointers at a 
+An IPC::MMA hash has a small I<header block> in shared memory,
+that includes a pointer to a I<pointer block> than contains
+an array of pointers to I<key blocks>.  The I<pointer block>
+is reallocated as needed to contain pointers to the current
+number of entries in the hash.  It expands by 64 pointers at a
 time so that reallocation doesn't happen often.
 
-Each I<key block> includes a pointer to the associated I<value block>, 
-followed by the key stored as a byte array.  Each I<value block> 
+Each I<key block> includes a pointer to the associated I<value block>,
+followed by the key stored as a byte array.  Each I<value block>
 contains the value stored as a byte array.
 
-The I<mm> library maintains the requested length of every block it 
-allocates, so IPC::MMA calls an I<mm> routine I<mm_sizeof> 
-to get the length of any shared memory block. 
+The I<mm> library maintains the requested length of every block it
+allocates, so IPC::MMA calls an I<mm> routine I<mm_sizeof>
+to get the length of any shared memory block.
 
-Most hash routines, after a little checking of their arguments, 
-call an internal routine named I<find_entry> that does a binary search 
-of the hash.  A binary search loses in performance to 
-a hashing algorithm for small numbers of entries, but that's not 
-the interesting end of the distribution of applications.  It there 
-are several hundred entries a binary search is competitive 
-with a true hash in performance, and for more than about 2000 
-entries a binary search is faster.  Also the memory requirements 
+Most hash routines, after a little checking of their arguments,
+call an internal routine named I<find_entry> that does a binary search
+of the hash.  A binary search loses in performance to
+a hashing algorithm for small numbers of entries, but that's not
+the interesting end of the distribution of applications.  It there
+are several hundred entries a binary search is competitive
+with a true hash in performance, and for more than about 2000
+entries a binary search is faster.  Also the memory requirements
 of this structure are less than for a BTree or a true hash.
 
-Zero-length values are handled by leaving the value pointer in 
-the I<key block> zero (NULL).  A zero-length key (there can be only 
-one such key in a hash) is handled by making the I<key block> 
-contain just the number of bytes in the value pointer.  A request 
-to store either an undefined key or an undefined value is rejected 
+Zero-length values are handled by leaving the value pointer in
+the I<key block> zero (NULL).  A zero-length key (there can be only
+one such key in a hash) is handled by making the I<key block>
+contain just the number of bytes in the value pointer.  A request
+to store either an undefined key or an undefined value is rejected
 with an error message.
 
 =head2 Unwrapped Arrays
 
-Perl array operations allow negative subscripts, which select 
+Perl array operations allow negative subscripts, which select
 the element that is the indicated number of slots down from the
 end of the array.  If you are a purist and/or a C programmer who
 doesn't like this feature, use the following direct-call methods:
@@ -1058,8 +1082,8 @@ points really easy to provide.
 =head1 PREREQUISITE
 
 IPC::MMA is based on Ralf Engelschall's I<mm> library, which is
-included in many Unix/Linux systems.  If it's not installed in 
-your system, it can be downloaded from 
+included in many Unix/Linux systems.  If it's not installed in
+your system, it can be downloaded from
 L<http://www.ossp.org/pkg/lib/mm/>.
 
 A major part of rationalizing locking in IPC::MMA was to create
@@ -1067,7 +1091,7 @@ alternative versions of some routines in I<mm>, with I<mm_lock>
 and I<mm_unlock> calls removed.
 
 IPC::MMA should operate with any reasonably modern version of I<mm>,
-but version 1.4.2 (August 2006) is recommended for guaranteed 
+but version 1.4.2 (August 2006) is recommended for guaranteed
 compatibility.
 
 =head1 AUTHOR
@@ -1107,7 +1131,7 @@ aliases are provided for BTrees:
     mm_clear_btree_table        mm_hash_clear
     mm_free_btree_table         mm_free_hash
 
-The primary names of IPC::MMA direct-call routines are lower-case 
+The primary names of IPC::MMA direct-call routines are lower-case
 versions of the names that the Perl interpreter uses for calls via
 the tied interface.  The following aliases are included for
 IPC:MM direct call names:
@@ -1120,11 +1144,11 @@ IPC:MM direct call names:
     mm_hash_get_value           mm_hash_fetch
     mm_hash_insert              mm_hash_store
 
-The following aliases are included because the author became 
-enamored of the I<ALIAS:> feature of the I<XS> interface and 
-wanted everything to be complete and orthogonal:
+The following aliases are included because the author likes the
+I<ALIAS:> feature of the I<XS> interface and wanted everything
+to be complete and orthogonal:
 
-    IPC::MM name                Aliased to IPC::MMA name
+    not an IPC::MM name         Aliased to IPC::MMA name
 
     IPC::MMA::BTree             IPC::MMA::Hash
     mma_make_btree_table        mma_make_hash
@@ -1141,5 +1165,4 @@ wanted everything to be complete and orthogonal:
     mma_hash_get                mma_hash_fetch
     mma_hash_get_value          mma_hash_fetch
     mma_hash_insert             mma_hash_store
-
 =cut

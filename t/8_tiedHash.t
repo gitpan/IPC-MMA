@@ -6,19 +6,6 @@ use strict;
 use warnings;
 use Test::More tests => 142;
 
-use constant ALLOC_OVERHEAD => 8;
-my $alloc_size;
-
-# determine the expected effect on available memory of the argument value
-sub mmLen {
-  return ((length(shift) - 1) | ($alloc_size - 1)) + 1;
-}
-
-# round a length up per the allocation size
-sub round_up {
-    return ((shift() - 1) | ($alloc_size - 1)) + 1;
-}
-
 our ($hash, $entries);
 our %checkHash;
 
@@ -52,15 +39,19 @@ my $memsize = mm_available ($mm);
 ok (defined $memsize && $memsize, "read available mem = $memsize");
 
 # test 4: get the allocation size
-$alloc_size = mm_alloc_size ($mm);
-ok (defined $alloc_size && $alloc_size, "read allocation size");
+my ($ALLOC_SIZE, $ALLOCBASE, $PSIZE, $IVSIZE, $NVSIZE, $DEFENTS) = mm_alloc_size();
 
-use constant MM_HASH_ROOT_USES => 12;
-my $MM_HASH_ROOT_SIZE = round_up (MM_HASH_ROOT_USES);
+ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
+    && $ALLOCBASE && $ALLOCBASE <= 256
+    && $PSIZE && $PSIZE <= 16
+    && $IVSIZE && $IVSIZE <= 16
+    && $NVSIZE && $NVSIZE <= 16
+    && $DEFENTS && $DEFENTS <= 256, "read allocation sizes");
+
+my $MM_HASH_ROOT_SIZE = mm_round_up (2*$PSIZE + $IVSIZE);
 
 # test 5: make a hash
-use constant DELTA_ENTRIES => 64;
-$hash = mm_make_hash ($mm, DELTA_ENTRIES);
+$hash = mm_make_hash ($mm);
 ok (defined $hash && $hash, "make hash");
 
 # the check hash
@@ -68,10 +59,9 @@ ok (defined $hash && $hash, "make hash");
 
 # test 6: memory reqd
 my $avail2 = mm_available ($mm);
-my $ptr_size_bytes=($memsize-$avail2-2*ALLOC_OVERHEAD-$MM_HASH_ROOT_SIZE)/DELTA_ENTRIES;
-
-is ($ptr_size_bytes, int ($ptr_size_bytes), 
-    "the computed pointer size ($ptr_size_bytes) should be an integer");
+my $expect = 2*$ALLOCBASE + $MM_HASH_ROOT_SIZE + mm_round_up($PSIZE * $DEFENTS);
+is ($avail2 - $memsize, -$expect,
+    "effect of making default-alloc hash on avil mem");
 
 # test 7: tie the hash
 my %tiedHash;
@@ -81,7 +71,7 @@ ok (tie (%tiedHash, 'IPC::MMA::Hash', $hash), "tie hash");
 my ($i, $key, $value, $exists, $dups);
 my ($keyBlockSize, $oldValBlockSize, $newValBlockSize, $decreased);
 my $incFrom = my $incTo = '';
-my $expect = $entries = $dups = $decreased = 0;
+$expect = $entries = $dups = $decreased = 0;
  
 do {
     $key = randStr(16);
@@ -91,9 +81,9 @@ do {
         "key ". shoHex($key) . " (" . ($entries + $dups)
         . ") existance in tied hash vs. existance in check hash");
     
-    $oldValBlockSize = $exists ? round_up (length $tiedHash{$key}) : 0;
-    $keyBlockSize = round_up ($ptr_size_bytes + length($key));    
-    $newValBlockSize = round_up (length($value));
+    $oldValBlockSize = $exists ? mm_round_up (length $tiedHash{$key}) : 0;
+    $keyBlockSize = mm_round_up ($PSIZE + length($key));    
+    $newValBlockSize = mm_round_up (length($value));
     
     $tiedHash{$key} = $value;
     $checkHash{$key} = $value;
@@ -114,16 +104,16 @@ do {
         $dups++;
         # quietly sneak another entry in to keep the number of tests constant
         do {$key = randStr(16)} until (!exists $tiedHash{$key});
-        $keyBlockSize = round_up ($ptr_size_bytes + length($key));
+        $keyBlockSize = mm_round_up ($PSIZE + length($key));
         $tiedHash {$key} = $value; 
         $checkHash{$key} = $value;
     }
-    $expect += $keyBlockSize + $newValBlockSize + 2*ALLOC_OVERHEAD;
+    $expect += $keyBlockSize + $newValBlockSize + 2*$ALLOCBASE;
     $entries++;
-} until ($entries == DELTA_ENTRIES);
+} until ($entries == $DEFENTS);
 
 #if ($dups) {diag "$dups duplicate keys ($lt <) occurred in "
-#                    . DELTA_ENTRIES ." random 1-16 byte keys"}
+#                    . $DEFENTS ." random 1-16 byte keys"}
 
 # test 72
 my $avail3 = mm_available ($mm);
@@ -160,8 +150,9 @@ is ($mmEntries = scalar(%tiedHash), --$entries,
 
 # test 78
 my $avail4 = mm_available ($mm);
-my $delta4 = ALLOC_OVERHEAD + round_up ($ptr_size_bytes + length($delKey))
-           + (length($delVal) ? ALLOC_OVERHEAD + mmLen($delVal) : 0);
+my $delta4 = $ALLOCBASE + mm_round_up ($PSIZE + length($delKey))
+           + (length($delVal) ? $ALLOCBASE + mm_round_up(length $delVal) 
+                              : 0);
            
 is ($avail4 - $avail3, $delta4,
     "effect of delete 2nd-last on available memory");

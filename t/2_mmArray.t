@@ -8,21 +8,6 @@ use Test::More tests => 143;
 use Test::Warn;
 use IPC::MMA qw(:basic :array);
 
-use constant PTR_SIZE => 4;
-use constant ALLOC_OVERHEAD => 8;
-
-my $alloc_size;
-
-# determine the expected effect on available memory of the argument value
-sub mmLen {
-  return ((length(shift) - 1) | ($alloc_size - 1)) + 1;
-}
-
-# round a length up per the allocation size
-sub round_up {
-    return ((shift() - 1) | ($alloc_size - 1)) + 1;
-}
-
 # this encoder makes a zero-length string for a 0 argument
 sub n2alpha {
     my $n = shift;
@@ -48,23 +33,26 @@ BEGIN {use_ok ('IPC::MMA', qw(:basic :array))}
 
 # test 2: create acts OK
 my $mm = mm_create (1, '/tmp/test_lockfile');
-ok (defined $mm && $mm, 
-    "create shared mem");
+ok (defined $mm && $mm, "create shared mem");
 
 # test 3: see if available answers civilly
 my $memsize = mm_available ($mm);
-ok (defined $memsize && $memsize, 
-    "read available mem");
+ok ($memsize && $memsize > 3800, "read available mem");
 
 # test 4: get the allocation size
-$alloc_size = mm_alloc_size ($mm);
-ok (defined $alloc_size && $alloc_size, 
-    "read allocation size");
+my ($ALLOC_SIZE, $ALLOCBASE, $PSIZE, $IVSIZE, $NVSIZE, $DEFENTS) = mm_alloc_size();
+
+ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
+    && $ALLOCBASE && $ALLOCBASE <= 256
+    && $PSIZE && $PSIZE <= 16
+    && $IVSIZE && $IVSIZE <= 16
+    && $NVSIZE && $NVSIZE <= 16
+    && $DEFENTS && $DEFENTS <= 256, "read allocation sizes");
 
 use constant ARRAY_SIZE => 32;
-# the next may increase to 24 if we split out an options word
-use constant MM_ARRAY_ROOT_USES => 20;
-my $MM_ARRAY_ROOT_SIZE = round_up (MM_ARRAY_ROOT_USES);
+
+# this may increase if we split out an options word
+my $MM_ARRAY_ROOT_SIZE = mm_round_up(2*$PSIZE + 3*$IVSIZE);
 
 # test 5: make a GP array
 my $array = mm_make_array ($mm, MM_ARRAY, ARRAY_SIZE);
@@ -73,7 +61,7 @@ ok (defined $array && $array,
 
 # test 6: memory reqd
 my $avail2 = mm_available ($mm);
-my $expect = ALLOC_OVERHEAD*2 + $MM_ARRAY_ROOT_SIZE + round_up(PTR_SIZE*ARRAY_SIZE);
+my $expect = $ALLOCBASE*2 + $MM_ARRAY_ROOT_SIZE + mm_round_up($PSIZE*ARRAY_SIZE);
 is ($avail2 - $memsize, -$expect, 
     "effect of (make_array MM_ARRAY) on avail mem");
         
@@ -88,7 +76,7 @@ for ($i=0; $i < ARRAY_SIZE; $i++) {
 # test 39
 # element 0 is zero-length and so doesn't use any memory
 my $avail3 = mm_available ($mm);
-$expect = (ARRAY_SIZE - 1) * (ALLOC_OVERHEAD + round_up(2));
+$expect = (ARRAY_SIZE - 1) * ($ALLOCBASE + mm_round_up(2));
 is ($avail3 - $avail2, -$expect, 
     "effect of ".ARRAY_SIZE." mm_array_store(MM_ARRAY)'s on avail mem");
         
@@ -171,7 +159,7 @@ is (mm_array_fetchsize ($array), ARRAY_SIZE - 1,
         
 # test 89
 my $avail4 = mm_available ($mm);
-$expect = ALLOC_OVERHEAD + round_up(2);
+$expect = $ALLOCBASE + mm_round_up(2);
 is ($avail4 - $avail3, $expect, 
     "effect of delete at end (2 byte value) on avail mem");
 
@@ -370,7 +358,7 @@ is (mm_array_fetch ($array, 4), n2alpha(2),
 # the expansion of the array block is by 16 plus an allocation block, 
 #  and the splice added a short element
 my $avail10 = mm_available ($mm);
-$expect = 16 + $alloc_size + ALLOC_OVERHEAD + round_up(4);
+$expect = 16 + $ALLOC_SIZE + $ALLOCBASE + mm_round_up(4);
 
 is ($avail10 - $avail9, -$expect,
     "effect of splice on avail mem");
@@ -387,7 +375,7 @@ ok (mm_array_fetch($array, ARRAY_SIZE) eq $longString,
 # test 137
 my $avail11 = mm_available ($mm);
 # we replaced a short entry by a long one
-$expect = mmLen ($longString) - round_up(2);
+$expect = mm_round_up(length $longString) - mm_round_up(2);
 is ($avail11 - $avail10, -$expect, 
     "effect of storing long string on avail mem");
 

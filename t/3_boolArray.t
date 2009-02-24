@@ -7,20 +7,6 @@ use warnings;
 use Test::More tests => 795;
 use IPC::MMA qw(:basic :array);
 
-use constant PTR_SIZE => 4;
-use constant ALLOC_OVERHEAD => 8;
-
-my $alloc_size;
-
-# determine the expected effect on available memory of the argument value
-sub mmLen {
-  return ((length(shift) - 1) | ($alloc_size - 1)) + 1;
-}
-
-# round a length up per the allocation size
-sub round_up {
-    return ((shift() - 1) | ($alloc_size - 1)) + 1;
-}
 my $array;
 my @checkArray = ();
  
@@ -62,15 +48,20 @@ ok (defined $memsize && $memsize,
     "read available mem");
 
 # test 4: get the allocation size
-$alloc_size = mm_alloc_size ($mm);
-ok (defined $alloc_size && $alloc_size, 
-    "read allocation size");
+my ($ALLOC_SIZE, $ALLOCBASE, $PSIZE, $IVSIZE, $NVSIZE, $DEFENTS) = mm_alloc_size();
 
-# no alloc_len operand to make array makes 64 elements which takes 2 words/8 bytes
-use constant ARRAY_SIZE => 64>>3;
+ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
+    && $ALLOCBASE && $ALLOCBASE <= 256
+    && $PSIZE && $PSIZE <= 16
+    && $IVSIZE && $IVSIZE <= 16
+    && $NVSIZE && $NVSIZE <= 16
+    && $DEFENTS && $DEFENTS <= 256, "read allocation sizes");
+
+# no alloc_len operand to make array makes default elements at 8/byte
+my $ARRAY_SIZE = $DEFENTS>>3;
+
 # the next may increase to 24 if we split out an options word
-use constant MM_ARRAY_ROOT_USES => 20;
-my $MM_ARRAY_ROOT_SIZE = round_up (MM_ARRAY_ROOT_USES);
+my $MM_ARRAY_ROOT_SIZE = mm_round_up(2*$PSIZE + 3*$IVSIZE);
 
 # test 5: make a boolean array
 $array = mm_make_array ($mm, MM_BOOL_ARRAY);
@@ -79,16 +70,16 @@ ok (defined $array && $array,
 
 # test 6: memory reqd
 my $avail2 = mm_available ($mm);
-my $array_size_bytes = round_up(ARRAY_SIZE);
-my $expect = ALLOC_OVERHEAD*2 + $MM_ARRAY_ROOT_SIZE + $array_size_bytes;
+my $ARRAY_SIZE_BYTES = mm_round_up($ARRAY_SIZE);
+my $expect = $ALLOCBASE*2 + $MM_ARRAY_ROOT_SIZE + $ARRAY_SIZE_BYTES;
 is ($avail2 - $memsize, -$expect, 
     "effect of (make_array MM_BOOL_ARRAY) on avail mem");
 
 # tests 7-70: populate the array
-my $array_size_bits = $array_size_bytes<<3;
+my $ARRAY_SIZE_BITS = $ARRAY_SIZE_BYTES<<3;
 my ($i, $rc, $bool, $bool2);
 my $rand=0;
-for ($i=0; $i < $array_size_bits; $i++) {
+for ($i=0; $i < $ARRAY_SIZE_BITS; $i++) {
     if (!$rand) {$rand = int(rand 1<<30)}
     my $bool = $rand & 1 ? 1 : '';;
     $rand >>= 1;
@@ -101,7 +92,7 @@ for ($i=0; $i < $array_size_bits; $i++) {
 # test 71
 my $avail3 = mm_available ($mm);
 is ($avail3 - $avail2, 0, 
-    "storing ".$array_size_bits." BOOL_ARRAY elements should not use any memory");
+    "storing ".$ARRAY_SIZE_BITS." BOOL_ARRAY elements should not use any memory");
         
 # tests 72-136: read back and check the array elements
 checkArray "initial array";
@@ -111,8 +102,8 @@ ok (!defined mm_array_fetch_nowrap ($array, -1),
     "fetch_nowrap -1 should return undef");
 
 # test 138
-ok (!defined mm_array_fetch ($array, $array_size_bits), 
-    "fetch ".$array_size_bits." should return undef");
+ok (!defined mm_array_fetch ($array, $ARRAY_SIZE_BITS), 
+    "fetch ".$ARRAY_SIZE_BITS." should return undef");
 
 # test 139: fetch undef outside the array
 is (mm_array_fetch ($array, -1), $checkArray[-1],
@@ -120,7 +111,7 @@ is (mm_array_fetch ($array, -1), $checkArray[-1],
 
 # test 140: test array status: entries
 my ($entries, $shiftCount, $type, $options) = mm_array_status ($array);
-is ($entries, $array_size_bits, 
+is ($entries, $ARRAY_SIZE_BITS, 
     "array size returned by mm_array_status");
 
 # test 141
@@ -136,11 +127,11 @@ is ($options, 0,
     "options returned by mm_array_status");
 
 # test 144
-is (mm_array_fetchsize ($array), $array_size_bits, 
+is (mm_array_fetchsize ($array), $ARRAY_SIZE_BITS, 
     "array size returned by mm_array_fetchsize");
 
 # test 145
-ok (mm_array_exists ($array, $array_size_bits - 1), 
+ok (mm_array_exists ($array, $ARRAY_SIZE_BITS - 1), 
     "mm_array_exists: should");
 
 # test 146
@@ -156,7 +147,7 @@ ok (!mm_array_exists_nowrap ($array, -1),
     "mm_array_exists: shouldn't");
 
 # test 149
-ok (!mm_array_exists ($array, $array_size_bits), 
+ok (!mm_array_exists ($array, $ARRAY_SIZE_BITS), 
     "mm_array_exists: shouldn't");
 
 # test 150: delete the end element, see that it returns the right value
@@ -164,7 +155,7 @@ is (mm_array_delete ($array, -1), pop @checkArray,
     "delete -1 should return deleted (last) value");
     
 # test 151: delete at end reduces array size
-is (mm_array_fetchsize ($array), $array_size_bits - 1, 
+is (mm_array_fetchsize ($array), $ARRAY_SIZE_BITS - 1, 
     "array size down by 1 after delete");
         
 # test 152
@@ -172,7 +163,7 @@ ok (!mm_array_delete_nowrap ($array, -1),
     "delete_nowrap -1 should fail");
     
 # test 153
-is (mm_array_fetchsize ($array), $array_size_bits - 1, 
+is (mm_array_fetchsize ($array), $ARRAY_SIZE_BITS - 1, 
     "no change in array size from losing delete_nowrap -1");
         
 # test 154
@@ -181,15 +172,15 @@ is ($avail4 - $avail3, 0,
     "delete at end (BOOL) should have no effect on avail mem");
 
 # test 155: can't delete the same one twice
-ok (!defined mm_array_delete ($array, $array_size_bits - 1), 
-    "can't delete ".($array_size_bits - 1)." twice");
+ok (!defined mm_array_delete ($array, $ARRAY_SIZE_BITS - 1), 
+    "can't delete ".($ARRAY_SIZE_BITS - 1)." twice");
 
 # test 156: array size again
-is (mm_array_fetchsize ($array), $array_size_bits - 1, 
+is (mm_array_fetchsize ($array), $ARRAY_SIZE_BITS - 1, 
     "array size not changed by failing delete");
 
 # test 157: select a true element for middle delete 
-my $delix = ($array_size_bits >> 1) - 3;
+my $delix = ($ARRAY_SIZE_BITS >> 1) - 3;
 while (!$checkArray[$delix]) {$delix--}
 
 is (mm_array_delete ($array, $delix), $checkArray[$delix],
@@ -201,7 +192,7 @@ is ($avail5 - $avail4, 0,
     "deleting element $delix should have no effect on on avail mem");
 
 # test 159
-is (mm_array_fetchsize ($array), $array_size_bits - 1, 
+is (mm_array_fetchsize ($array), $ARRAY_SIZE_BITS - 1, 
     "array size not changed by delete in middle");
 
 # middle-deleted bool element can't return undef, only false
@@ -217,7 +208,7 @@ is ($bool = mm_array_pop ($array), pop @checkArray,
 # test 225
 my $size;
 ($size, $shiftCount) = mm_array_status ($array);
-is ($size, $array_size_bits - 2, 
+is ($size, $ARRAY_SIZE_BITS - 2, 
     "pop decreases array size by 1");
 
 # test 226
@@ -225,7 +216,7 @@ is ($size, $array_size_bits - 2,
     "pop should not affect shift count");
 
 # test 227
-is (mm_array_fetch ($array, $array_size_bits-2), undef, 
+is (mm_array_fetch ($array, $ARRAY_SIZE_BITS-2), undef, 
     "get popped index should return undef");
 
 # test 228-290
@@ -237,13 +228,13 @@ is ($avail6 - $avail5, 0,
     "pop should have no effect on avail mem");
 
 # test 292: push it back
-is (mm_array_push ($array, $bool), $array_size_bits - 1, 
+is (mm_array_push ($array, $bool), $ARRAY_SIZE_BITS - 1, 
     "push '$bool' should return array size");
 push @checkArray, $bool;
 
 # test 293
 ($size, $shiftCount) = mm_array_status ($array);
-is ($size, $array_size_bits - 1, 
+is ($size, $ARRAY_SIZE_BITS - 1, 
     "push should increase array size by 1");
 
 # test 294
@@ -264,7 +255,7 @@ is (mm_array_shift ($array), shift @checkArray,
     
 # test 361
 ($size, $shiftCount) = mm_array_status ($array);
-is ($size, $array_size_bits - 2, 
+is ($size, $ARRAY_SIZE_BITS - 2, 
     "shift should decrease array size by 1");
     
 # test 362

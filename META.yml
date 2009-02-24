@@ -1,13 +1,14 @@
 --- #YAML:1.0
 name:               IPC-MMA
-version:            0.52
+version:            0.53
 abstract:           ~
 author:  []
 license:            unknown
 distribution_type:  module
 configure_requires:
     ExtUtils::MakeMaker:  0
-requires:  {}
+requires:
+    Test::Warn:  0.11
 no_index:
     directory:
         - t

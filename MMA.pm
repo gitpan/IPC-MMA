@@ -8,7 +8,7 @@ require DynaLoader;
 our @ISA = qw(Exporter DynaLoader);
 
 # set the version for version checking
-our $VERSION = 0.52;
+our $VERSION = 0.53;
 
 # nothing is exported into callers namespace by default
 our @EXPORT = qw( );
@@ -19,7 +19,7 @@ basic => [qw(
     mm_maxsize         mm_create           mm_permission           mm_destroy
     mm_lock            mm_unlock           MM_LOCK_RD              MM_LOCK_RW
     mm_available       mm_error            mm_display_info         
-    mm_alloc_size )],   # last is ours
+    mm_alloc_size      mm_round_up )], # last 2 are ours
 scalar => [qw(
     mm_make_scalar     mma_make_scalar     mm_free_scalar         mma_free_scalar
     mm_scalar_fetch    mma_scalar_fetch    mm_scalar_store        mma_scalar_store

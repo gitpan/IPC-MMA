@@ -7,20 +7,8 @@ use warnings;
 use Test::More tests => 4750;
 use IPC::MMA qw(:basic :array);
 
-use constant ALLOC_OVERHEAD => 8;
-my $alloc_size;
-
 our @typeNames = ("MM_ARRAY", "MM_UINT_ARRAY", "MM_INT_ARRAY", "MM_DOUBLE_ARRAY");
 
-# determine the expected effect on available memory of the argument value
-sub mmLen {
-  return ((length(shift) - 1) | ($alloc_size - 1)) + 1;
-}
-
-# round a length up per the allocation size
-sub round_up {
-    return ((shift() - 1) | ($alloc_size - 1)) + 1;
-}
 our ($array, $type, $entries, $var_size_bytes, $umax);
 our @checkArray;
 
@@ -30,9 +18,9 @@ sub typeName {
 
 sub randVar {
     if ($type == MM_INT_ARRAY) {
-        return int(rand($umax+1) - ($umax/2));
+        return int(rand($umax) - ($umax/2));
     } elsif ($type == MM_UINT_ARRAY) {
-        return int(rand $umax+1);
+        return int(rand $umax);
     } elsif ($type == MM_DOUBLE_ARRAY) {
         return (rand 1) * 10**(rand(128)-64);
     } else {
@@ -85,13 +73,16 @@ ok (defined $memsize && $memsize,
     "read available mem");
 
 # test 4: get the allocation size
-$alloc_size = mm_alloc_size ($mm);
-ok (defined $alloc_size && $alloc_size, 
-    "read allocation size");
+my ($ALLOC_SIZE, $ALLOCBASE, $PSIZE, $IVSIZE, $NVSIZE, $DEFENTS) = mm_alloc_size();
 
-# the next may increase to 24 if we split out an options word
-use constant MM_ARRAY_ROOT_USES => 20;
-my $MM_ARRAY_ROOT_SIZE = round_up (MM_ARRAY_ROOT_USES);
+ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
+    && $ALLOCBASE && $ALLOCBASE <= 256
+    && $PSIZE && $PSIZE <= 16
+    && $IVSIZE && $IVSIZE <= 16
+    && $NVSIZE && $NVSIZE <= 16
+    && $DEFENTS && $DEFENTS <= 256, "read allocation sizes");
+
+$umax = 256 ** $IVSIZE;
 
 #### cycle thru the array types
 foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
@@ -99,33 +90,27 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
     #### all test numbers below refer to the first pass through
 
     # test 5: make an array of the current type
-    use constant ARRAY_SIZE => 64;
-    $array = mm_make_array ($mm, $type, ARRAY_SIZE);
+    $array = mm_make_array ($mm, $type);
     ok (defined $array && $array, 
-        "make array of ".typeName);
+        "make array of $DEFENTS ".typeName);
     
     @checkArray = ();        
     
     # test 6: memory reqd
     my $avail2 = mm_available ($mm);
-    $var_size_bytes = ($memsize - $avail2 - ALLOC_OVERHEAD*2 - $MM_ARRAY_ROOT_SIZE) / ARRAY_SIZE;
+    $var_size_bytes = $type < 0 ? ($IVSIZE, $IVSIZE, $NVSIZE)[$type - MM_INT_ARRAY]
+                                : $type;
+    # this may increase if we split out an options word
+    my $MM_ARRAY_ROOT_SIZE = mm_round_up(2*$PSIZE + 3*$IVSIZE);
 
-    is ($var_size_bytes, int ($var_size_bytes), 
-        "the computed variable size ($var_size_bytes) should be an integer");
-    if ($type == MM_INT_ARRAY
-     || $type == MM_UINT_ARRAY) {
-      
-        $umax = 0xFFFFFFFF;
-        if ($var_size_bytes == 8) {
-            $umax |= $umax<<32;
-    }   }
-        
-    my $expect = 0;
+    my $expect = 2 * $ALLOCBASE + $MM_ARRAY_ROOT_SIZE + mm_round_up($DEFENTS * $var_size_bytes);
+    is ($avail2 - $memsize, -$expect, 
+        "impact of array of $DEFENTS ".typeName." on avail memory");
     
     # tests 7-70: populate the array
-    my ($i, $rc, $bool, $bool2);
+    my ($i, $rc, $val, $val2);
     my $rand=0;
-    for ($i=0; $i < ARRAY_SIZE; $i++) {
+    for ($i=0; $i < $DEFENTS; $i++) {
         $rand = randVar;
         push @checkArray, $rand;
         ok (($rc = mm_array_store ($array, $i, $rand)) == 1, 
@@ -138,7 +123,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
     # test 71
     my $avail3 = mm_available ($mm);
     is ($avail3 - $avail2, 0, 
-        "storing ".ARRAY_SIZE." array elements should not use any memory");
+        "storing ".$DEFENTS." array elements should not use any memory");
             
     # tests 72-136: read back and check the array elements
     checkArray "initial array";
@@ -148,8 +133,8 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "fetch_nowrap -1 should return undef");
     
     # test 138
-    ok (!defined mm_array_fetch ($array, ARRAY_SIZE), 
-        "fetch ".ARRAY_SIZE." should return undef");
+    ok (!defined mm_array_fetch ($array, $DEFENTS), 
+        "fetch ".$DEFENTS." should return undef");
     
     # test 139: fetch -1 returns last entry
     is (mm_array_fetch ($array, -1), $checkArray[-1], 
@@ -161,7 +146,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
     
     # test 141: test array status: entries
     my ($entries, $shiftCount, $typeRet, $options) = mm_array_status ($array);
-    is ($entries, ARRAY_SIZE, 
+    is ($entries, $DEFENTS, 
         "array size returned by mm_array_status");
     
     # test 142
@@ -177,11 +162,11 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "options returned by mm_array_status");
     
     # test 145
-    is (mm_array_fetchsize ($array), ARRAY_SIZE, 
+    is (mm_array_fetchsize ($array), $DEFENTS, 
         "array size returned by mm_array_fetchsize");
     
     # test 146
-    ok (mm_array_exists ($array, ARRAY_SIZE - 1), 
+    ok (mm_array_exists ($array, $DEFENTS - 1), 
         "mm_array_exists: should");
     
     # test 147
@@ -197,7 +182,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "mm_array_exists_nowrap -1: shouldn't");
     
     # test 150
-    ok (!mm_array_exists ($array, ARRAY_SIZE), 
+    ok (!mm_array_exists ($array, $DEFENTS), 
         "mm_array_exists: shouldn't");
     
     # test 151: delete the end element using -1, see that it returns the last value
@@ -205,7 +190,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "delete -1 should return deleted (last) value");
         
     # test 152: delete at end reduces array size
-    is (mm_array_fetchsize ($array), ARRAY_SIZE - 1, 
+    is (mm_array_fetchsize ($array), $DEFENTS - 1, 
         "array size down by 1 after delete");
             
     # test 153
@@ -218,15 +203,15 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "delete_nowrap -1 should fail"); 
     
     # test 155: can't delete the same one twice
-    ok (!defined mm_array_delete ($array, ARRAY_SIZE - 1), 
+    ok (!defined mm_array_delete ($array, $DEFENTS - 1), 
         "can't delete ".($entries - 1)." twice");
     
     # test 156: array size again
-    is (mm_array_fetchsize ($array), ARRAY_SIZE - 1, 
+    is (mm_array_fetchsize ($array), $DEFENTS - 1, 
         "array size not changed by failing delete");
     
     # test 157: delete middle delete 
-    my $delix = (ARRAY_SIZE >> 1) - 3;
+    my $delix = ($DEFENTS >> 1) - 3;
     is (mm_array_delete ($array, $delix), $checkArray[$delix],
         "delete element $delix should return element value");
     
@@ -236,7 +221,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "deleting element $delix should have no effect on on avail mem");
     
     # test 159
-    is (mm_array_fetchsize ($array), ARRAY_SIZE - 1, 
+    is (mm_array_fetchsize ($array), $DEFENTS - 1, 
         "array size not changed by delete in middle");
     
     # middle-deleted fixed-length element can't return undef, only false
@@ -246,13 +231,13 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
     checkArray "after middle delete";
     
     # test 224: try pop
-    is ($bool = mm_array_pop ($array), pop @checkArray, 
-        "pop '$bool' from both arrays");
+    is ($val = mm_array_pop ($array), pop @checkArray, 
+        "pop from both arrays");
     
     # test 225
     my $size;
     ($size, $shiftCount) = mm_array_status ($array);
-    is ($size, ARRAY_SIZE - 2, 
+    is ($size, $DEFENTS - 2, 
         "pop decreases array size by 1");
     
     # test 226
@@ -260,7 +245,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "pop should not affect shift count");
     
     # test 227
-    is (mm_array_fetch ($array, ARRAY_SIZE-2), undef, 
+    is (mm_array_fetch ($array, $DEFENTS-2), undef, 
         "get popped index should return undef");
     
     # test 228-290
@@ -272,13 +257,13 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "pop should have no effect on avail mem");
     
     # test 292: push it back
-    is (mm_array_push ($array, $bool), ARRAY_SIZE - 1, 
-        "push '$bool' should return new array size");
-    push @checkArray, $bool;
+    is (mm_array_push ($array, $val), $DEFENTS - 1, 
+        "push should return new array size");
+    push @checkArray, $val;
     
     # test 293
     ($size, $shiftCount) = mm_array_status ($array);
-    is ($size, ARRAY_SIZE - 1, 
+    is ($size, $DEFENTS - 1, 
         "push should increase array size by 1");
     
     # test 294
@@ -299,7 +284,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         
     # test 361
     ($size, $shiftCount) = mm_array_status ($array);
-    is ($size, ARRAY_SIZE - 2, 
+    is ($size, $DEFENTS - 2, 
         "shift should decrease array size by 1");
         
     # test 362
@@ -339,7 +324,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
     $ioN = 9;
     @ioArray = mm_array_splice ($array, 29, $ioN);
     is (scalar @ioArray, $ioN,
-        "splice out $ioN should return correct # elements");
+        "splice out $ioN should return $ioN elements");
     
     # tests 501-510
     my @ioArray2 = splice (@checkArray, 29, $ioN);

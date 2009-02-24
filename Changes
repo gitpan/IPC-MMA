@@ -1,6 +1,17 @@
 Revision history for IPC::MMA
 
-0.52  Feb 15 2009: cc Optimize flag in Makefile.PL set to optimize
+0.53  Feb 23 2009:
+      * Fixed 2 bugs intoruced with "minor improvement" in 0.51:
+        ** the mm_sizeof routine wrongly computed when an allocated 
+           entry could stay in place
+        ** mm_hash_store used its result in the wrong polarity 
+      * Revised installation tests and mm_alloc_size function
+        so that they shoud succeed on more platforms.  
+      * Also for CPAN testers, include Test::Warn as a prerequisite.
+      * Further tweaking of return values in functions that return lists.  
+      * Documentation updated in several places.
+
+0.52  Feb 15 2009: set cc Optimize flag in Makefile.PL to optimize
       (0.51 was set for debugging).
       Return empty lists for exceptional conditions in functions that
       return lists.

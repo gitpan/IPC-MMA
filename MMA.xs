@@ -12,9 +12,6 @@ extern "C" {
 }
 #endif
 
-/* global variables */
-int alloc_size = 0;
-
 /* if you add more, adjust the starting value so the last one is zero */
 enum mm_array_t { MM_BOOL_ARRAY = -4, MM_DOUBLE_ARRAY, MM_INT_ARRAY, MM_UINT_ARRAY,
                   MM_ARRAY };
@@ -41,9 +38,7 @@ enum {NOT_SET=1, AD_OK};
 #define MAX_SIZE 0x7FFFFFFF
 
 /* common error message for > 1 routine */
-char mm_op1mes[] = "IPC::MMA first argument error";
-
-char mm_inf_mes[128];
+const char mm_op1mes[] = "IPC::MMA first argument error";
 
 /* this routine is called by the AUTOLOAD sub in MMA.pm,
     to check for a constant defined by IPC::MMA */
@@ -71,8 +66,8 @@ static double constant (char *name, int notused) {
 
 /* round size up to multiple of alloc_size */
 
-int mm_round_up (MM *mm, size_t size) {
-    return ((size - 1) | (alloc_size - 1)) + 1;
+size_t mm_round_up (size_t size) {
+    return ((size - 1) | mma_alloc_mask()) + 1;
 }
 
 /* useful for debugging seg faults 
@@ -95,7 +90,7 @@ typedef struct {
 typedef struct {
     MM   *mm;
     void *ptr;
-    int  type, shiftCount;
+    IV   type, shiftCount;
     UV   entries;
 } mm_array;
 
@@ -193,28 +188,6 @@ void mm_err_type (int type) {
     mm_err_set (mes);
 }
 
-/* called between mm_create and returning to the user, also by some testing routines */
-
-UV mm_alloc_size (MM *mm) {
-    UV work1, work2;
-    void *ptr, *ptr2;
-    
-    work1 = mm_available(mm);
-    if (!alloc_size 
-     && (ptr = mm_malloc(mm, 64))) {
-        work2 = mm_available(mm);
-        work1 = work2 - work1;                /* the amount of memory used for 64 */
-        if (ptr2 = mm_malloc(mm, 65)) {
-            work2 = mm_available(mm) - work2; /* the amount of memory used for 65 */
-            alloc_size = work1 - work2; /* the difference is the alloc block size */
-            mm_free (mm, ptr2);
-        }
-        mm_free (mm, ptr);
-    }
-    if (!alloc_size) croak ("mm_alloc_size can't determine size");
-    return alloc_size;
-}
-
 /* COMMENTED OUT!! */
 #if 0
 SV *mm_showSV (SV *sv) {
@@ -287,6 +260,8 @@ void mm_free_scalar (mm_scalar *scalar, int prelocked) {
 
 SV *mm_scalar_fetch (mm_scalar *scalar, int prelocked) {
     void *ptr;
+    STRLEN thisLen;
+/*    char mes[128]; STRLEN len2;**** TEMP ****/ 
     SV *sv = &PL_sv_undef;
 
     if (mm_checkArg (scalar, SCALAR) > NOT_SET) {
@@ -296,8 +271,15 @@ SV *mm_scalar_fetch (mm_scalar *scalar, int prelocked) {
             ptr = scalar->ptr;
             if (ptr == ZERO_LEN) sv = &PL_sv_no;
             /* return it as a Perl scalar */
-            else sv = newSVpvn (ptr, mm_sizeof(scalar->mm, ptr));
-            
+            else {
+                sv = newSVpvn (ptr, thisLen = mm_sizeof(scalar->mm, ptr));
+                /**** TEMP ****
+                sprintf (mes, "scalar fetched len=%d, data=", thisLen);
+                memcpy (mes+(len2=strlen(mes)), ptr, thisLen);
+                memset (mes+len2+thisLen, 0, 1);
+                mm_err_set(mes);                
+                **** END TEMP ****/
+            }
             prelocked || mm_unlock(scalar->mm);
         } else mm_err_cant_lock();
     }
@@ -310,6 +292,7 @@ int mm_scalar_store (mm_scalar *scalar, SV *sv, int prelocked) {
     STRLEN svLen;
     void *ptr, *newptr, *svPtr;
     int ret=0;
+/*    char mes[128]; STRLEN thisLen; **** TEMP ****/
     
     if (mm_checkArg (scalar, SCALAR)) {
         if (SvOK(sv) && !SvROK(sv)) {
@@ -325,7 +308,6 @@ int mm_scalar_store (mm_scalar *scalar, SV *sv, int prelocked) {
                     ret = 1;
                 } else if (ptr) {
                     if (!mma_sizeok(ptr, svLen)) {
-//                  if (svLen != mm_sizeof(scalar->mm, ptr)) {
                         /* need a different block of memory  
                         we don't use realloc because it loses memory 
                         ptr = mma_realloc (scalar->mm, ptr, svLen); */
@@ -339,6 +321,13 @@ int mm_scalar_store (mm_scalar *scalar, SV *sv, int prelocked) {
                     scalar->ptr = ptr;
                     /* move the value to the value block */
                     memcpy (ptr, svPtr, svLen);
+                    /**** TEMP ****
+                    sprintf (mes, "scalar stored len=%d, data=", svLen);
+                    thisLen = strlen(mes);
+                    memcpy (mes+thisLen, svPtr, svLen);
+                    memset (mes+thisLen+svLen, 0, 1);
+                    mm_err_set(mes);
+                    **** END TEMP ****/
                     ret = 1;
                 }
                 prelocked || mm_unlock(scalar->mm);
@@ -391,10 +380,10 @@ UV mm_bytes_for (int type, UV entries) {
     return mm_type_size(type) * entries;
 }
 
-UV mm_alloc_len (MM *mm, int type, UV entries) {
+UV mm_alloc_len (int type, UV entries) {
     size_t len;
     if (!entries) entries = DELTA_ENTRIES;
-    return (mm_round_up (mm, mm_bytes_for (type, entries)));
+    return (mm_round_up (mm_bytes_for (type, entries)));
 }
 
 /* make an array */
@@ -412,7 +401,7 @@ mm_array *mm_make_array (MM *mm, IV type, IV entries, UV option, int prelocked) 
                     array->type = type > 0 ? type<<1 | option & 1 : type;
 
                     if (!(array->ptr = mma_calloc (mm, 1,
-                                            mm_alloc_len (mm, array->type, entries)))) {
+                                            mm_alloc_len (array->type, entries)))) {
                         mma_free (mm, array);
                         array = NULL;
                 }   }
@@ -535,7 +524,7 @@ int mm_array_extend (mm_array *array, UV entries, int prelocked) {
                     memset (ptr2, 0, (array->entries - entries) * size);
             }   }
             len = mm_sizeof (array->mm, ptr);
-            bytes_needed = mm_alloc_len (array->mm, array->type, entries);
+            bytes_needed = mm_alloc_len (array->type, entries);
     
             if (bytes_needed > len
              || entries <= array->entries
@@ -566,10 +555,12 @@ int mm_array_extend (mm_array *array, UV entries, int prelocked) {
 /* store an entry in an array */
 
 int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
-    void *ptr, *valPtr, *svPtr, *newptr;
+    void *ptr, *valPtr, *svPtr;
+    void *newptr = (void *)-1;
     STRLEN len, svLen;
     UV mask; NV nv; IV uv;
     int ret=0;
+    int boole=-1;
     mm_lib_error_set (0, NULL);
     
     if (mm_checkArg (array, ARRAY)) {
@@ -603,10 +594,10 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
                                 /* new value is a real string 
                                     we don't use realloc because it loses memory */
                                 if (valPtr <= ZERO_LEN) valPtr = mma_malloc (array->mm, svLen);
-//                                else if (svLen != mm_sizeof (array->mm, valPtr)) {
-                                else if (!mma_sizeok(valPtr, svLen)) {
-                                    if (newptr = mma_malloc(array->mm, svLen)) 
+                                else if (!(boole = mma_sizeok(valPtr, svLen))) {
+                                    if (newptr = mma_malloc(array->mm, svLen)) {
                                         mma_free(array->mm, valPtr);
+                                    }
                                     valPtr = newptr;
                                 }
                                 if (valPtr) {
@@ -615,7 +606,7 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
                                     memcpy (valPtr, svPtr, svLen);
                                     if (index >= array->entries) array->entries = index + 1;
                                     ret = 1;
-                            }    }
+                            }   }
                             break;
         
                         /* Note that we store booleans in an array such that [0] is 0x80
@@ -875,7 +866,7 @@ void mm_array_splice_bool_expand (mm_array *array, UV index, IV shift_count, UV 
 
 int mm_array_splice (mm_array *array, IV index, IV del_count,
                       SV **delSVs, IV add_count, SV **addSVs, int prelocked) {
-    UV new_entries;
+    UV old_entries, new_entries;
     size_t size;
     int i, shift_count, ret=0;
 
@@ -904,8 +895,9 @@ int mm_array_splice (mm_array *array, IV index, IV del_count,
         /* if adding data above the current entries,
             (we can't also be deleting or the test above will give an error)
             call storesize to add entries between */
+        old_entries = array->entries;
         if (add_count > 0
-         || index <= array->entries
+         || index <= old_entries
          || mm_array_storesize (array, index, 1)) {
          
             /* save any deleted entries for return */
@@ -958,13 +950,16 @@ int mm_array_splice (mm_array *array, IV index, IV del_count,
                 if (shift_count < 0) mm_array_extend (array, new_entries, 1);
             }
             /* if we're adding and/or deleting at the start of the array,
-                track the total of such adds and deletes in array->shiftCount */
-            if (!index) array->shiftCount -= shift_count;  /* we got the sign backward */
+                track the total of such adds and deletes in array->shiftCount 
+                                 (which is the count of deletes at the front) */
+            if (!index
+             && (del_count
+              || add_count && old_entries)) array->shiftCount -= shift_count;
         
             /* store added entries (if any) */
             ret = 1;
             for (i = 0; i < add_count; i++) {
-                if (!mm_array_store (array, index++, addSVs[i], 1)) ret = 0;
+                if (!mm_array_store (array, index++, addSVs[i], -1)) ret = 0;
             }
         } /* if storesize lost, it made an error message */
         
@@ -1030,24 +1025,27 @@ SV *mm_array_delete (mm_array *array, IV index, int prelocked) {
 void mm_array_clear (mm_array *array, UV entries, int prelocked) {
     size_t initLen;
     void **ptr, *valPtr;
+    UV i;
 
     if (mm_checkArg (array, ARRAY)) {
         if (prelocked || mm_lock(array->mm, MM_LOCK_RW)) {
-
-            if (array->entries) {
+        
+            if (i = array->entries) {
                 if (array->type == MM_ARRAY) {
                     /* free the blocks used for values */
                     ptr = array->ptr;
-                    while (array->entries--) {
+                    while (i--) {
                         valPtr = *ptr++;
-                        if (valPtr > ZERO_LEN) mma_free (array->mm, valPtr);
+                        if (valPtr > ZERO_LEN) {
+                            mma_free (array->mm, valPtr);
+                        }
             }   }   }
-            initLen = mm_alloc_len (array->mm, array->type, entries);
+            initLen = mm_alloc_len (array->type, entries);
             if (ptr = mma_calloc(array->mm, 1, initLen)) {
                 mma_free (array->mm, array->ptr);
                 array->ptr = ptr; 
             } else memset (array->ptr, 0, mm_sizeof (array->mm, array->ptr));
-            array->entries = 0;
+            array->entries = array->shiftCount = 0;
             prelocked || mm_unlock(array->mm);
         } else mm_err_cant_lock;
 }   }
@@ -1087,7 +1085,7 @@ mm_hash *mm_make_hash (MM *mm, IV entries, int prelocked) {
                 /* store the pointer to the overall shared memory structure in the hash */
                 hash->mm = mm;
                 /* allocate the pointer table and store pointer to it in the hash */
-                if (!(hash->ptr = mma_calloc (mm, 1, mm_round_up(mm, entries*sizeof(void *))))) {
+                if (!(hash->ptr = mma_calloc (mm, 1, mm_round_up(entries*sizeof(void *))))) {
                     mma_free (mm, hash);
                     hash = NULL;
             }   }
@@ -1244,8 +1242,7 @@ int mm_hash_store (mm_hash *hash, SV *key, SV *val, UV flags, int prelocked) {
                                 if (!valLen) {
                                     mma_free (hash->mm, mmValPtr);
                                     mmValPtr = NULL;
-//                                } else if (valLen != mm_sizeof (hash->mm, mmValPtr)) {
-                                } else if (mma_sizeok(mmValPtr, valLen)) {
+                                } else if (!mma_sizeok(mmValPtr, valLen)) {
                                     /* we don't use realloc because it loses memory */
                                     if (ptr = mma_malloc (hash->mm, valLen)) mma_free (hash->mm, mmValPtr);
                                     mmValPtr = ptr; 
@@ -1453,8 +1450,7 @@ void mm_hash_clear (mm_hash *hash, IV entries, int prelocked) {
             }
             if (entries <= 0) entries = DELTA_ENTRIES;
             
-            if (ptr = mma_calloc (hash->mm, 1,
-                                  mm_round_up(hash->mm, entries*sizeof(void *)))) {
+            if (ptr = mma_calloc (hash->mm, 1, mm_round_up(entries*sizeof(void *)))) {
                 mma_free (hash->mm, hash->ptr);
                 hash->ptr = ptr;
             } else {
@@ -1497,8 +1493,6 @@ MM *
 mm_create(size, file)
     size_t size
     char *file
-    POSTCALL:
-        if (RETVAL) mm_alloc_size(RETVAL);
     
 int
 mm_permission(mm, mode, owner, group)
@@ -1534,10 +1528,24 @@ int
 mm_unlock(mm)
     MM *mm
 
-UV
-mm_alloc_size (mm)
-    MM *mm
-    
+void
+mm_alloc_size ()
+    PPCODE:
+        if (GIMME_V == G_ARRAY) {
+            EXTEND(SP, 6);
+            XPUSHs(sv_2mortal(newSVuv((UV)mma_alloc_mask()+1)));
+            XPUSHs(sv_2mortal(newSVuv((UV)mma_alloc_base())));
+            XPUSHs(sv_2mortal(newSVuv((UV)sizeof(void *))));
+            XPUSHs(sv_2mortal(newSVuv((UV)IVSIZE)));
+            XPUSHs(sv_2mortal(newSVuv((UV)NVSIZE)));
+            XPUSHs(sv_2mortal(newSVuv((UV)DELTA_ENTRIES)));
+        } else {
+            XPUSHs(sv_2mortal(newSVuv((UV)mma_alloc_mask()+1)));
+        }
+        
+size_t
+mm_round_up (size)
+    size_t size
 
 #------------------------------------- scalars ------------------------------------
 
@@ -1610,11 +1618,16 @@ mm_array_status (array)
         int i=0;
     PPCODE:
         mm_array_status (array, statArray, ix);
-        if (statArray[0] >= 0) {
-            EXTEND(SP, 4);
-            while (i < 4) XPUSHs (sv_2mortal (newSViv(statArray[i++])));
+        if (GIMME_V == G_ARRAY) {
+            if (statArray[0] >= 0) {
+                EXTEND(SP, 4);
+                while (i < 4) XPUSHs (sv_2mortal (newSViv(statArray[i++])));
+        }   } else {
+            if (statArray[0] >= 0) {
+                XPUSHs (sv_2mortal (newSViv(statArray[0])));
+            } else XPUSHs (&PL_sv_undef);
         }
-
+        
 SV *
 mm_array_fetch (array, index)
     mm_array *array
@@ -1708,10 +1721,17 @@ mm_array_splice (array, offset, length, ...)
         int i=0, j=0;
     PPCODE:
         while (i < add_count) addSVs[i++] = ST(i+3);
-        if (mm_array_splice (array,index,del_count,delSVs,add_count,addSVs,ix&1)) {
+        if (!mm_array_splice (array,index,del_count,delSVs,add_count,addSVs,ix&1)) {
+            if (PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
+            del_count = 0;
+        }
+        # "in scalar context, splice returns the last entry deleted"
+        # means just return all of them in either scalar or array mode
+        
+        if (del_count || GIMME_V == G_ARRAY) {
             EXTEND (SP, del_count);
-            while (j < del_count) PUSHs(sv_2mortal(delSVs[j++]));
-        } else if (PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
+            while (j < del_count) XPUSHs(sv_2mortal(delSVs[j++]));
+        } else XPUSHs (&PL_sv_undef);
 
 SV *
 mm_array_delete (array, index)
@@ -1859,10 +1879,13 @@ mm_hash_get_entry(hash, index)
         SV* ret[2];
     PPCODE:
         mm_hash_get_entry(hash, index, ix, ret);
-        if (SvOK(ret[0])) {
-            EXTEND(SP, 2);
+        if (GIMME_V == G_ARRAY) {
+            if (SvOK(ret[0])) {
+                EXTEND(SP, 2);
+                XPUSHs (sv_2mortal (ret[0]));
+                XPUSHs (sv_2mortal (ret[1]));    
+        }   } else {
             XPUSHs (sv_2mortal (ret[0]));
-            XPUSHs (sv_2mortal (ret[1]));    
         }
 
 SV *

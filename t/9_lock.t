@@ -62,7 +62,7 @@ if (!$id) {
     while ($var < 5) {usleep 10}
 }
 
-# test 9: process 1 sets a RD lock, sets var 6 or 7, others acknowledge 7 by setting 8, 9, 10
+# test 9: process 1 sets a RD lock, sets var 7 or 8, others acknowledge 8 by setting 9, 10, 11
 if ($id==1) {
     while ($var < 6) {usleep 10}
     $var = mm_lock($mm, MM_LOCK_RD) ? '08' : '07';
@@ -79,11 +79,11 @@ if ($id==1) {
     $var = 11;
 } else {
     while ($var < ($id+7)) {usleep 10}
-    $var = $id + 8;
+    $var = $id == 2 ? 10 : 11;
     while ($var < 11) {usleep 10}
 }
 
-# test 10: process 2 sets a RD lock, sets var 11-12, others ack 12 by setting 13, 14, 15
+# test 10: process 2 sets a RD lock, sets var 13-14, others ack 14 by setting 15, 16, 17
 if ($id == 2) {
     while ($var < 12) {usleep 10}
     $var = mm_lock($mm, MM_LOCK_RD) ? 14 : 13;
