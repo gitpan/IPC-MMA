@@ -36,9 +36,9 @@ ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
 
 # show the max and min shared memory size and allocation size
 diag sprintf ("max shared mem size on this platform is %d (0x%X),\n"
-. "                       min shared mem size is %d (0x%X), allocation unit is $ALLOC_SIZE bytes,\n"
-. "                       allocation base is $ALLOCBASE bytes, pointer size is $PSIZE bytes,\n"
-. "                       IV size is $IVSIZE bytes, NV size is $NVSIZE bytes\n",
+. "                         min shared mem size is %d (0x%X), allocation unit is $ALLOC_SIZE bytes,\n"
+. "                         allocation base is $ALLOCBASE bytes, pointer size is $PSIZE bytes,\n"
+. "                         IV size is $IVSIZE bytes, NV size is $NVSIZE bytes\n",
                 $maxsize, $maxsize, $memsize, $memsize);
 
 # test 7: lock returns 1

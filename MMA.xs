@@ -342,14 +342,14 @@ int mm_scalar_store (mm_scalar *scalar, SV *sv, int prelocked) {
 #if UVSIZE==4
 #define BIT_TO_UV_SHIFT 5
 #define BIT_WITHIN_UV_MASK 0x1F
-#define BIT0 ((UV)(1<<31))
+#define BIT0    ((UV)0x80000000)
 #define ALLONES ((UV)0xFFFFFFFF)
 
 #elif UVSIZE==8
 #define BIT_TO_UV_SHIFT 6
 #define BIT_WITHIN_UV_MASK 0x3F
-#define BIT0 ((UV)(1<<63))
-#define ALLONES ((UV)0xFFFFFFFFFFFFFFFF)
+#define BIT0    ((UV)0x8000000000000000LLU)
+#define ALLONES ((UV)0xFFFFFFFFFFFFFFFFLLU)
 
 #else
 #error "Can't determine MM_ARRAY_BOOL parameters for type UV"
@@ -764,7 +764,7 @@ void mm_array_splice_bool_contract (mm_array *array, UV index, IV shift_count, U
 
         first_shift = (    index & BIT_WITHIN_UV_MASK)
                     - (src_index & BIT_WITHIN_UV_MASK);
-        /* this can range from -31 to 31
+        /* this can range from -31 to 31 (or -63 to 63)
            < 0 means shift bits left  within words
              0 means bits stay in same bit numbers
            > 0 means shift bits right within words
@@ -773,11 +773,11 @@ void mm_array_splice_bool_contract (mm_array *array, UV index, IV shift_count, U
             /* shifting array down, left within words,
                  need to fetch 2nd source word to get 1st dest word */
             second_shift = -first_shift;
-            first_shift = 32 - second_shift;
+            first_shift = UVSIZE*8 - second_shift;
             prev = *src_ad++;
         } else {
             /* shifting array down but shifting right within words */
-            second_shift = 32 - first_shift;
+            second_shift = UVSIZE*8 - first_shift;
             prev = 0;
         }
         /* do the lowest-addressed word */
@@ -813,8 +813,7 @@ void mm_array_splice_bool_expand (mm_array *array, UV index, IV shift_count, UV 
     UV left_mask, right_mask, dest_index, prev, this;
     UV *ptr = array->ptr;    
 
-    /* boolean array is 
-        if index is at the top of the array, there's nothing to shift */
+    /* if index is at the top of the array, there's nothing to shift */
     if (index < array->entries) {
 
         dest_index   = index + shift_count;
@@ -824,7 +823,7 @@ void mm_array_splice_bool_expand (mm_array *array, UV index, IV shift_count, UV 
         
         IV second_shift = (dest_index & BIT_WITHIN_UV_MASK)
                         - (     index & BIT_WITHIN_UV_MASK);
-        /* this can range from -31 to 31
+        /* this can range from -31 to 31 (or -63 to 63)
            < 0 means shift bits left  within words
              0 means bits stay in same bit numbers
            > 0 means shift bits right within words
@@ -833,9 +832,9 @@ void mm_array_splice_bool_expand (mm_array *array, UV index, IV shift_count, UV 
         if (second_shift < 0) {
             /* shifting right in array but shifting words left */
             first_shift = -second_shift;
-            second_shift = 32 - first_shift;
+            second_shift = UVSIZE*8 - first_shift;
         } else {
-            first_shift = 32 - second_shift;
+            first_shift = UVSIZE*8 - second_shift;
         }
         left_mask = ~BITNO_TO_RIGHTMASK(new_entries);
             

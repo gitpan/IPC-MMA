@@ -1,24 +1,30 @@
 Revision history for IPC::MMA
 
+0.54  Feb 26 2009:
+      * Fixed boolean array operation on platforms with 64 bit integers
+      * Corrected the .pod docs some more
+
 0.53  Feb 23 2009:
-      * Fixed 2 bugs intoruced with "minor improvement" in 0.51:
+      * Fixed 2 bugs introduced with the "minor improvement" in 0.51:
         ** the mm_sizeof routine wrongly computed when an allocated 
-           entry could stay in place
-        ** mm_hash_store used its result in the wrong polarity 
-      * Revised installation tests and mm_alloc_size function
-        so that they shoud succeed on more platforms.  
+           block could remain in place
+        ** mm_hash_store used its return value in the wrong polarity 
+      * Revised installation tests and the mm_alloc_size function
+        so that they should succeed on more platforms.  
       * Also for CPAN testers, include Test::Warn as a prerequisite.
       * Further tweaking of return values in functions that return lists.  
       * Documentation updated in several places.
 
-0.52  Feb 15 2009: set cc Optimize flag in Makefile.PL to optimize
-      (0.51 was set for debugging).
-      Return empty lists for exceptional conditions in functions that
-      return lists.
+0.52  Feb 15 2009: 
+      * Set cc Optimize flag in Makefile.PL to optimize (0.51 was 
+        set for debugging).
+      * Return empty lists for exceptional conditions in functions 
+        that return lists.
 
-0.51  Feb 14 2009: Added use tags (:basic :scalar etc) to .pod doc.
-      Minor improvement in keeping shared memory blocks in place,
-      when they don't have to be re-allocated.
+0.51  Feb 14 2009: 
+      * Added use tags (:basic :scalar etc) to .pod doc.
+      * Minor improvement in keeping shared memory blocks in place,
+        when they don't have to be re-allocated.
 
 0.5   Feb 13 2009: New package with largely IPC::MM compatible names.
       Retains direct call and tied interfaces for scalars and hashes.
@@ -27,6 +33,6 @@ Revision history for IPC::MMA
       floating point, boolean, and fixed-length records
       (a.k.a. maximum-length strings).
 
-      BTree functions are retained as a aliases for Hash functions.
+      BTree functions are retained as aliases for Hash functions.
       Hash functions return keys in sorted order, which was the
       main difference of IPC::MM's BTree mode compared to Hash mode.
