@@ -15,11 +15,11 @@ chomp $binpath;
 if (!$binpath) {
     print "installation requires mm-config, which should have been installed with the mm library\n";
     $binpath = prompt(" Please enter path to mm-config:");
-    $binpath =~ s'(/(mm-config)?)?$'/';
+    $binpath =~ s'(/(mm-config)?)?$'/mm-config';
 }
-my $cflags  = `${binpath}mm-config --cflags`;
-my $ldflags = `${binpath}mm-config --ldflags`;
-my $libs    = `${binpath}mm-config --libs`;
+my $cflags  = `$binpath --cflags`;
+my $ldflags = `$binpath --ldflags`;
+my $libs    = `$binpath --libs`;
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
