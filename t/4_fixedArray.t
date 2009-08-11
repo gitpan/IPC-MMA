@@ -38,8 +38,9 @@ sub makeZero {
 # check the whole array
 sub checkArray {
     my $testName = shift;
-    my ($size, $size2);
-    is ($size = mm_array_fetchsize($array), $size2 = scalar @checkArray,
+    my $size = mm_array_fetchsize($array);
+    my $size2 = scalar @checkArray;
+    is ($size, $size2,
         "$testName: size of test array and check array should match");
     if ($size2 < $size) {$size = $size2}
     for (my $i=0; $i < $size; $i++) {
@@ -50,9 +51,9 @@ sub checkArray {
 # compare 2 arrays
 sub compArray {
     my ($array1ref, $array2ref, $testName) = @_;
-    my ($size1, $size2);
-    is ($size1 = scalar @$array1ref, $size2 = scalar @$array2ref, 
-        "$testName: arrays should be same size");
+    my $size1 = scalar @$array1ref;
+    my $size2 = scalar @$array2ref;
+    is ($size1, $size2, "$testName: arrays should be same size");
     if ($size2 < $size1) {$size1 = $size2}
     for (my $i=0; $i <$size1; $i++) {
         is ($$array1ref[$i], $$array2ref[$i],
@@ -231,8 +232,8 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
     checkArray "after middle delete";
     
     # test 224: try pop
-    is ($val = mm_array_pop ($array), pop @checkArray, 
-        "pop from both arrays");
+    $val = mm_array_pop ($array);
+    is ($val, pop @checkArray, "pop from both arrays");
     
     # test 225
     my $size;

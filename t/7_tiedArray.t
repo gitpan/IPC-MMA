@@ -19,25 +19,24 @@ sub randVar {
 # check the whole array
 sub checkArray {
     my $testName = shift;
-    my ($size, $size2);
-    is ($size = scalar @mmArray, $size2 = scalar @checkArray,
+    my $size = scalar @mmArray;
+    my $size2 = scalar @checkArray;
+    is ($size, $size2,
         "$testName: size of test array and check array should match");
     if ($size2 < $size) {$size = $size2}
     for (my $i=0; $i < $size; $i++) {
-        is ($mmArray[$i], $checkArray[$i],
-            "$testName: element $i");
+        is ($mmArray[$i], $checkArray[$i],"$testName: element $i");
 }   }
 
 # compare 2 arrays
 sub compArray {
     my ($array1ref, $array2ref, $testName) = @_;
-    my ($size1, $size2);
-    is ($size1 = scalar @$array1ref, $size2 = scalar @$array2ref, 
-        "$testName: arrays should be same size");
+    my $size1 = scalar @$array1ref;
+    my $size2 = scalar @$array2ref;
+    is ($size1, $size2, "$testName: arrays should be same size");
     if ($size2 < $size1) {$size1 = $size2}
     for (my $i=0; $i <$size1; $i++) {
-        is ($$array1ref[$i], $$array2ref[$i],
-            "$testName: element $i")
+        is ($$array1ref[$i], $$array2ref[$i], "$testName: element $i");
 }   }
 
 open (RAND, "</dev/random") or BAIL_OUT("Can't open /dev/random for read: $!\n");
@@ -157,9 +156,8 @@ ok (!exists $mmArray[$DEFENTS],
     "exists: shouldn't");
 
 # test 86: delete the end element, see that it returns the right value
-my $val;
-is ($val = delete $mmArray[$DEFENTS - 1], delete $checkArray[$DEFENTS - 1], 
-    "delete should return deleted value");
+my $val = delete $mmArray[$DEFENTS - 1];
+is ($val, delete $checkArray[$DEFENTS - 1], "delete should return deleted value");
     
 # test 87: delete at end reduces array size
 is (scalar @mmArray, $DEFENTS - 1, 
@@ -182,7 +180,8 @@ is (scalar @mmArray, $DEFENTS - 1,
 
 # test 91: middle delete 
 my $delix = ($DEFENTS >> 1) - 3;
-is ($val = delete $mmArray[$delix], $checkArray[$delix],
+$val = delete $mmArray[$delix];
+is ($val, $checkArray[$delix],
     "delete element $delix should have returned element value");
     
 # test 92: reading it should return undef
@@ -207,8 +206,8 @@ $checkArray[$delix] = undef;
 is_deeply (\@mmArray, \@checkArray, "compare arrays after middle delete");
 
 # test 96: try pop
-is ($val = pop @mmArray, pop @checkArray, 
-    "pop both arrays");
+$val = pop @mmArray;
+is ($val, pop @checkArray, "pop both arrays");
 $expect = length($val) ? $ALLOCBASE + mm_round_up(length $val) : 0;
 # diag "expect = $expect";
 
@@ -264,7 +263,8 @@ is ($shiftCount, 0,
 is_deeply (\@mmArray, \@checkArray, "compare arrays after push");
 
 # test 106: try shift
-is ($val = shift @mmArray, shift @checkArray,
+$val = shift @mmArray;
+is ($val, shift @checkArray,
     "value returned by shift");
     
 # test 107

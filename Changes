@@ -1,5 +1,10 @@
 Revision history for IPC::MMA
 
+0.55  Aug 10 2009:
+      Tests changed to avoid some problems found by CPAN testers
+      Improved Makefile.PL to ask for mm library (to reduce UNKNOWN tests)
+      (No change to IPC::MMA)
+
 0.54  Feb 26 2009:
       * Fixed boolean array operation on platforms with 64 bit integers
       * Corrected the .pod docs some more

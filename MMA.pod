@@ -759,7 +759,7 @@ block, as described for I<mm_make_array>.
 
 =head2 Deleting Structures
 
-Except by notification and acknowledgement among the processes sharing
+Except by notification and acknowledgment among the processes sharing
 data in a memory pool, the calls in this section should only be used
 by the last surviving process.  Otherwise, other processes will be
 left with pointers/handles to structures that no longer exist, and
@@ -862,7 +862,7 @@ A read-locked I<keys> operation is probably OK, but a locked
 I<each> sequence (or a locked sequence using I<mma_hash_next_key>)
 can lock out a process requesting a write lock for a long time.
 
-In general the I<mm_hash_get_entry> call is a better choice than 
+In general the I<mm[a]_hash_get_entry> call is a better choice than 
 I<mm[a]_hash_next_key> to traverse a hash.  
 
  # keys equivalent:
@@ -945,7 +945,7 @@ These values represent:
   $entryBase   the "overhead" or base of each allocated block (in bytes)
   $pSize       the size of a memory address/pointer (in bytes)
   $ivSize      the size of an IV (a Perl integer, in bytes)
-  $nvSize      the size of an NV (a Perl floating point vale, in bytes)
+  $nvSize      the size of an NV (a Perl floating point value, in bytes)
   $defEnts     the default number of entries allocated for an array or hash
 
 This function returns (8, 8, 4, 4, 8, 64) on the author's platform.

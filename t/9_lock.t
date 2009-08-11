@@ -105,75 +105,84 @@ if ($id == 2) {
 }
             
 # test 11: upgrading a RD lock to RW
+# at the start, processes 0, 1, 2 have read locks
+$timer = 0;
             
 if ($id==1) {
-    # at time 0 of test 11, id 1 sets var to 19 and requests 
-    # an upgrade of its RD lock to RW
+    # when process 1 sees process 0 set var to 18,
+    #  it sets var to 19 then requests 
+    #  an upgrade of its RD lock to RW
     while ($var < 18) {usleep 10}
     $var = 19;
+    # this should lock up until 0 and 2 have released their locks, 
+    #  and 3 has read-locked and then released 
     if (!mm_lock ($mm, MM_LOCK_RW)) {
         $var = 97;
-        die "1 can't get RW lock";
+        exit;
     }
-    usleep 200;  # let id 3 finish storing its value
-    if ($var == 24) {
-        $var = mm_unlock($mm) ? 26 : 25;
-    } elsif ($var == 26) {
-        $var = mm_unlock($mm) ? 30 : 29;
+    while ($var < 23 && $timer < 500) {
+      $timer += 10;
+      usleep 10; # let 3 store its 23
     }
-
+    if ($var == 22) {
+        $var = mm_unlock($mm) ? 24 : 91;
+    } elsif ($var == 23) {
+        $var = mm_unlock($mm) ? 26 : 91;
+    }
+    
 } elsif ($id==3) {
-    # when process 3 (which has no lock at all) sees 19, 
-    # it requests a read lock.  
-    while ($var < 19) {usleep 10}
-    usleep 200; 
-
+    # a short while after process 3 (which has no lock at all) sees 20, 
+    # it requests a read lock (1 will have gotten its write lock by then)  
+    while ($var < 20) {usleep 10}
+    usleep 100;
     if (!mm_lock($mm, MM_LOCK_RD)) {
         $var = 98;
-        die "3 can't get RD lock";
+        exit;
     }
-    # when id gets its read lock, it sets var to 20
-    # and then waits up to 2000 for id 1 to get its WR lock and 
-    # advance $var from 23 to 25.
-    $var = 20;
-    $timer = 0;
-    while ($var < 26 && $timer < 2000) {
+    # when process 3 gets its read lock, it sets var to 21
+    # and then waits a while to see if process 1 gets its WR lock and 
+    # sets $var to 24
+    $var = 21;
+    while ($var < 24 && $timer < 1000) {
         $timer += 10;
         usleep 10;
     }
-    if ($var == 24) {
-        $var = mm_unlock($mm) ? 26 : 25;
-    } elsif ($var == 26) {
-        $var = mm_unlock($mm) ? 28 : 27;
+    if ($var == 22) {
+        $var = mm_unlock($mm) ? 23 : 93;
+    } elsif ($var == 24) {
+        $var = mm_unlock($mm) ? 25 : 93;
     }
     
 } elsif (!$id) {
-
-    # when process 0 sees 20, it releases its read lock and 
-    #  advances to 21 or 22 depending on the success of its unlock
+    # when process 0 sees 19, it releases its read lock and 
+    #  advances to 20
     # then it continues to wait until a timeout, or it sees one of 
     #  the terminating values
     $var = 18;
-    $timer = 0;
-    while ($var < 27 && $timer < 8000) {
-        if ($var == 20) {$var = mm_unlock($mm) ? 22 : 21}
+    while ($var < 25 && $timer < 4000) {
+        if ($var == 19) {$var = mm_unlock($mm) ? 20 : 90}
         $timer += 10;
         usleep 10;
     }
-    ok ($var == 28 || $var == 30, "id 1 write lock "
-        . ($var == 28 ? "was granted before a later id 3 RD request" 
-                      : $var == 30 ? "had to wait for a later id 3 RD request"
-                                   : "test failed: got $var"));
-} else {
+    my $mes = $var==97 ? "id 1 couldn't upgrade read to write lock"
+            : $var==98 ? "id 3 couldn't get read lock"
+            : $var>=90 ? "id ".($var-90)." couldn't unlock"
+            : $var< 25 ? "state got stuck at $var"
+            : "id 1 write lock " 
+            . ($var == 25 ? "was granted before a later id 3 read lock" 
+                          : "had to wait for a later id 3 read lock");
+    # report the test result (2 results are OK)
+    ok ($var == 25 || $var == 26, $mes);
 
-    # when process 2 sees 22, it releases its read lock and 
-    # advances to 23 or 24 depending on the success of its unlock
-    while ($var < 22) {usleep 10}
-    $var = mm_unlock($mm) ? 24 : 23;
+} else {
+    # process 2: when it sees 21 it releases its read lock and 
+    # advances to 22
+    while ($var < 21) {usleep 10}
+    $var = mm_unlock($mm) ? 22 : 92;
 }
 # success on test 11 means that a process can upgrade a read lock 
 #   to a write lock without first releasing the read lock
-#   but online words says theis upgrade is subject to an interloper
+#   but online words say this upgrade is subject to an interloper
 
 # not a test: knock off the other processes and destroy the shared memory
 if (!$id) {

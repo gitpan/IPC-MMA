@@ -165,7 +165,7 @@ is ($avail4 - $avail3, $expect,
 
 # test 90: delete -1 with nowrap should not
 ok (!defined mm_array_delete_nowrap ($array, -1), 
-    "delete -1 element with nowarp shoyld fail");
+    "delete -1 element with nowarp should fail");
 
 # test 91: array size again
 is (mm_array_fetchsize ($array), ARRAY_SIZE - 1, 

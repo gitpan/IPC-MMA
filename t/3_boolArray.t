@@ -81,7 +81,7 @@ my ($i, $rc, $bool, $bool2);
 my $rand=0;
 for ($i=0; $i < $ARRAY_SIZE_BITS; $i++) {
     if (!$rand) {$rand = int(rand 1<<30)}
-    my $bool = $rand & 1 ? 1 : '';;
+    $bool = $rand & 1 ? 1 : '';;
     $rand >>= 1;
     push @checkArray, $bool;
     ok (($rc = mm_array_store ($array, $i, $bool)) == 1, 
@@ -202,7 +202,8 @@ $checkArray[$delix] = '';
 checkArray "after middle delete";
 
 # test 224: try pop
-is ($bool = mm_array_pop ($array), pop @checkArray, 
+$bool = mm_array_pop ($array);
+is ($bool, pop @checkArray, 
     "pop '$bool' from both arrays");
 
 # test 225
@@ -274,7 +275,7 @@ checkArray "after shift";
 my @ioArray = ();
 my $ioN = 7;
 $i=0;
-while (++$i <= $ioN) {push @ioArray, (int rand 2) ? 1 : ''}
+while (++$i <= $ioN) {push @ioArray, int(rand 2) ? 1 : ''}
 is (mm_array_unshift ($array, @ioArray), $size + $ioN,
     "unshifting $ioN elements should return new array size");
 

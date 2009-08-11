@@ -7,7 +7,7 @@ DESCRIPTION
 
 COPYRIGHT & TERMS
 
-  Copyright (c) 2008-2009, Craig MacKenna (craig@animalhead.com>
+  Copyright (c) 2008-2009, Craig MacKenna (craig@animalhead.com)
 
   This module is free software; you may redistribute it and/or
   modify it under the same terms as Perl itself.
@@ -21,7 +21,7 @@ COPYRIGHT & TERMS
 PREREQUISITE
 
   This module requires Ralf Engelschall's mm library.  It was developed
-  with version 1.4.2.  See http://www.engelschall.com/sw/mm/ for more
+  with version 1.4.2.  See http://www.ossp.org/pkg/lib/mm/ for more
   about mm.
 
 INSTALLATION
@@ -38,7 +38,7 @@ INSTALLATION
   The classic way:
 
     Choose a directory to use for installing.
-    Move the distribution file IPC-MMA-n.nn.tar.gz into it
+    Move/download the distribution file IPC-MMA-n.nn.tar.gz into it
     cd into it
     $ tar -xf IPC-MMA-n.nn.tar.gz
 
@@ -53,7 +53,7 @@ INSTALLATION
 
     $ sudo make install  (or just make install if you're superuser)
 
-  Either of the above alternarives should install IPC::MMA into the
+  Either of the above alternatives should install IPC::MMA into the
   Perl library.
 
   See the POD documentation for further details. Once the module
@@ -62,9 +62,9 @@ INSTALLATION
 
     $ perldoc IPC::MMA
 
-  Or if your man system is properly configured:
+  Or if your man system is configured in a compatible way:
 
-    $ man  IPC::MMA
+    $ man IPC::MMA
 
 
 NOTES
