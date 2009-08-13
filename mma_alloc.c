@@ -14,8 +14,8 @@ static void mma_insert_chunk(MM *mm, mem_chunk *mcInsert)
     mem_chunk *mcPrevPrev;
     mem_chunk *mcNext;
 
-//    if (!mm_core_lock((void *)mm, MM_LOCK_RW))
-//        return;
+/*    if (!mm_core_lock((void *)mm, MM_LOCK_RW))
+      return; */
     mc = &(mm->mp_freechunks);
     mcPrevPrev = mc;
     while (mc->mc_u.mc_next != NULL && (char *)(mc->mc_u.mc_next) < (char *)mcInsert) {
@@ -25,7 +25,7 @@ static void mma_insert_chunk(MM *mm, mem_chunk *mcInsert)
     mcPrev = mc;
     mcNext = mc->mc_u.mc_next;
     if (mcPrev == mcInsert || mcNext == mcInsert) {
-//        mm_core_unlock((void *)mm);
+/*        mm_core_unlock((void *)mm); */
         ERR(MM_ERR_ALLOC, "chunk of memory already in free list");
         return;
     }
@@ -63,7 +63,7 @@ static void mma_insert_chunk(MM *mm, mem_chunk *mcInsert)
         mcPrev->mc_u.mc_next = mcInsert;
         mm->mp_freechunks.mc_usize += 1;
     }
-//    mm_core_unlock((void *)mm);
+/*    mm_core_unlock((void *)mm); */
     return;
 }
 
@@ -86,8 +86,8 @@ static mem_chunk *mma_retrieve_chunk(MM *mm, size_t size)
         return NULL;
     if (mm->mp_freechunks.mc_usize == 0)
         return NULL;
-//    if (!mm_core_lock((void *)mm, MM_LOCK_RW))
-//        return NULL;
+/*    if (!mm_core_lock((void *)mm, MM_LOCK_RW))
+        return NULL; */
 
     /* find best-fitting chunk */
     pmcMin = NULL;
@@ -127,7 +127,7 @@ static mem_chunk *mma_retrieve_chunk(MM *mm, size_t size)
         }
     }
 
-//    mm_core_unlock((void *)mm);
+/*    mm_core_unlock((void *)mm); */
     return mcRes;
 }
 
@@ -147,10 +147,10 @@ void *mma_malloc(MM *mm, size_t usize)
         mc->mc_usize = usize;
         return &(mc->mc_u.mc_base.mw_cp);
     }
-//    if (!mm_core_lock((void *)mm, MM_LOCK_RW))
-//        return NULL;
+/*    if (!mm_core_lock((void *)mm, MM_LOCK_RW))
+        return NULL; */
     if ((mm->mp_size - mm->mp_offset) < size) {
-//        mm_core_unlock((void *)mm);
+/*        mm_core_unlock((void *)mm); */
         ERR(MM_ERR_ALLOC, "out of memory");
         errno = ENOMEM;
         return NULL;
@@ -160,7 +160,7 @@ void *mma_malloc(MM *mm, size_t usize)
     mc->mc_usize = usize;
     vp = (void *)&(mc->mc_u.mc_base.mw_cp);
     mm->mp_offset += size;
-//    mm_core_unlock((void *)mm);
+/*    mm_core_unlock((void *)mm); */
     return vp;
 }
 

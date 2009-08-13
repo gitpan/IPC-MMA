@@ -114,16 +114,14 @@ if ($id==1) {
     #  an upgrade of its RD lock to RW
     while ($var < 18) {usleep 10}
     $var = 19;
-    # this should lock up until 0 and 2 have released their locks, 
-    #  and 3 has read-locked and then released 
     if (!mm_lock ($mm, MM_LOCK_RW)) {
         $var = 97;
         exit;
     }
-    while ($var < 23 && $timer < 500) {
-      $timer += 10;
-      usleep 10; # let 3 store its 23
-    }
+    # when 1 gets its write lock, either 3 is still waiting for its 
+    #  read lock, or it has gotten its lock and then released it
+    while ($var < 22) {usleep 10}
+    usleep 200; # time for 3 to set 23 after unlock
     if ($var == 22) {
         $var = mm_unlock($mm) ? 24 : 91;
     } elsif ($var == 23) {
@@ -133,20 +131,17 @@ if ($id==1) {
 } elsif ($id==3) {
     # a short while after process 3 (which has no lock at all) sees 20, 
     # it requests a read lock (1 will have gotten its write lock by then)  
-    while ($var < 20) {usleep 10}
-    usleep 100;
+    while ($var < 19) {usleep 10}
+    usleep 200;  # make sure #1 has requested its lock and is waiting
+    $var = 20;
     if (!mm_lock($mm, MM_LOCK_RD)) {
         $var = 98;
         exit;
     }
-    # when process 3 gets its read lock, it sets var to 21
-    # and then waits a while to see if process 1 gets its WR lock and 
-    # sets $var to 24
-    $var = 21;
-    while ($var < 24 && $timer < 1000) {
-        $timer += 10;
-        usleep 10;
-    }
+    # when 3 gets its read lock, either 1 is still waiting for its 
+    #  write lock, or it has gotten its write lock and then released it
+    while ($var < 22) {usleep 10}
+    usleep 200; # time for 1 to set 24 after unlock
     if ($var == 22) {
         $var = mm_unlock($mm) ? 23 : 93;
     } elsif ($var == 24) {
@@ -159,8 +154,12 @@ if ($id==1) {
     # then it continues to wait until a timeout, or it sees one of 
     #  the terminating values
     $var = 18;
+    my $t20 = 0;
     while ($var < 25 && $timer < 4000) {
-        if ($var == 19) {$var = mm_unlock($mm) ? 20 : 90}
+        if ($var == 20) {
+            if (($t20 ||= $timer+1)
+             && $timer >= $t20 + 200) {$var = mm_unlock($mm) ? 21 : 90}
+        }
         $timer += 10;
         usleep 10;
     }

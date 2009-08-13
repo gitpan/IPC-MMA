@@ -1,7 +1,27 @@
 Revision history for IPC::MMA
 
+0.57  Aug 13 2009
+      * Learned that CPAN UNKNOWN test results are not just indications 
+        that a tester hasn't gotten around to testing the module yet!
+        They are actual test reports that can be opened, and contain
+        worse (more basic) problems than FAIL results!
+      * Learned that some UNKNOWNs for 0.56 were due to use of 
+        "IS_NUMBER..." symbols that are not provided by older Perl systems
+      * Used Devel::PPPort to add ppport.h file to distribution
+      * Included (in C preprocessor sense) ppport.h in MMA.xs
+      * With help of script in ppport.h, defined two symbols in MMA.xs 
+        that make ppport.h define required "IS_NUMBER..." symbols when 
+        they're not provided by an older Perl
+      * Added prerequisite for latest version of ExtUtils::ParseXS, an 
+        attempt to avoid some nasty-looking warnings in 'make' step, 
+        that I had just battled through on my own system
+      * revised t/9_lock.t in response to FAIL on 0.56
+      * added Devel::CheckOS to distribution and Makefile.PL, to 
+        restrict IPC::MMA install to OSes that mm runs on
+      (Still no change to IPC::MMA itself since 0.54)
+
 0.56  Aug 11 2009:
-      Introduced some bad code in Makefile.PL of 0.55
+      Fixed some bad code in Makefile.PL of 0.55
       It shouldn't have worked but it seemed to.  Forget 0.55!
 
 0.55  Aug 10 2009:

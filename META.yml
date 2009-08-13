@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               IPC-MMA
-version:            0.56
+version:            0.57
 abstract:           ~
 author:  []
 license:            unknown
@@ -10,7 +10,8 @@ configure_requires:
 build_requires:
     ExtUtils::MakeMaker:  0
 requires:
-    Test::Warn:  0.11
+    ExtUtils::ParseXS:  2.20_04
+    Test::Warn:         0.11
 no_index:
     directory:
         - t

@@ -6,6 +6,9 @@ extern "C" {
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#define  NEED_grok_number
+#define  NEED_grok_numeric_radix
+#include "ppport.h"
 #include "mm.h"
 #include "mma_alloc.h"
 #ifdef __cplusplus
