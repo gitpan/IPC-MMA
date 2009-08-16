@@ -1,12 +1,10 @@
 Revision history for IPC::MMA
 
+0.58  Aug 15 2009
+      Included revised t/2_mmArray.t to try to fix 0.54 failure 
+      (inadvertently omitted from 0.55-57)
+
 0.57  Aug 13 2009
-      * Learned that CPAN UNKNOWN test results are not just indications 
-        that a tester hasn't gotten around to testing the module yet!
-        They are actual test reports that can be opened, and contain
-        worse (more basic) problems than FAIL results!
-      * Learned that some UNKNOWNs for 0.56 were due to use of 
-        "IS_NUMBER..." symbols that are not provided by older Perl systems
       * Used Devel::PPPort to add ppport.h file to distribution
       * Included (in C preprocessor sense) ppport.h in MMA.xs
       * With help of script in ppport.h, defined two symbols in MMA.xs 
@@ -22,7 +20,7 @@ Revision history for IPC::MMA
 
 0.56  Aug 11 2009:
       Fixed some bad code in Makefile.PL of 0.55
-      It shouldn't have worked but it seemed to.  Forget 0.55!
+      It shouldn't have worked but it seemed to for me.  Forget 0.55!
 
 0.55  Aug 10 2009:
       Tests changed to avoid some problems found by CPAN testers

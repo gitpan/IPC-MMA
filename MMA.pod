@@ -6,17 +6,17 @@ IPC::MMA - Shared Memory using Ralf Engelschall's mm library
 
  use IPC::MMA;
 
- $mm = mm_create (memory_size, path_to_lockfile);
- $scalar = mm_make_scalar ($mm);
- $array = mm_make_array ($mm, type [, entries[, option]]);
- $hash = mm_make_hash ($mm [, entries]);
+ $mm = mm_create(memory_size, path_to_lockfile);
+ $scalar = mm_make_scalar($mm);
+ $array = mm_make_array($mm, type [, entries[, option]]);
+ $hash = mm_make_hash($mm [, entries]);
  tie $tiedScalar, 'IPC::MMA::Scalar', $scalar;
  tie @tiedArray, 'IPC::MMA::Array', $array;
  tie %tiedHash, 'IPC::MMA::Hash', $hash;
 
- mm_lock ($mm, MM_LOCK_RD);
- mm_lock ($mm, MM_LOCK_RW);
- mm_unlock ($mm);
+ mm_lock($mm, MM_LOCK_RD);
+ mm_lock($mm, MM_LOCK_RW);
+ mm_unlock($mm);
 
  DIRECT CALLS                                   TIED EQUIVALENTS
  $ok = mm_scalar_store($scalar, $value);        $tiedScalar = $value;
@@ -24,37 +24,37 @@ IPC::MMA - Shared Memory using Ralf Engelschall's mm library
  mm_free_scalar($scalar)
 
  $ok = mm_array_store($array, $index, $value);  $tiedArray[$index] = $value;
- $value = mm_array_fetch ($array, $index);      $value = $tiedArray[$index];
- $entries = mm_array_push ($array, list);       $entries = push @tiedArray, list;
- $value = mm_array_pop ($array);                $value = pop @tiedArray;
- $value = mm_array_shift ($array);              $value = shift @tiedArray;
- $entries = mm_array_unshift ($array, list);    $entries = unshift @tiedArray, list;
- if (mm_array_exists ($array, $index)) {...}    if (exists $tiedArray[$index]) { ... }
- $value = mm_array_delete ($array, $index);     $value = delete $tiedArray[$index];
+ $value = mm_array_fetch($array, $index);       $value = $tiedArray[$index];
+ $entries = mm_array_push($array, list);        $entries = push @tiedArray, list;
+ $value = mm_array_pop($array);                 $value = pop @tiedArray;
+ $value = mm_array_shift($array);               $value = shift @tiedArray;
+ $entries = mm_array_unshift($array, list);     $entries = unshift @tiedArray, list;
+ if (mm_array_exists($array, $index)) {...}     if (exists $tiedArray[$index]) { ... }
+ $value = mm_array_delete($array, $index);      $value = delete $tiedArray[$index];
  @dels=mm_array_splice($array,$ix,$delCt,list); @dels=splice @tiedArray,$ix,$delCt,list;
- mm_array_clear ($array [, $entries]);          $tiedArray = ();
- $entries = mm_array_fetchsize ($array)         $entries = scalar(@tiedArray)
+ mm_array_clear($array [, $entries]);           $tiedArray = ();
+ $entries = mm_array_fetchsize($array)          $entries = scalar(@tiedArray)
  ($entries,$shiftCt,$type,$opt) = mm_array_status($array);
- mm_free_array ($array)
+ mm_free_array($array)
 
- $ok = mm_hash_store ($hash, $key, $value);     $tiedHash{$key} = $value;
- $value = mm_hash_fetch ($hash, $key);          $value = $tiedHash{$key};
- $value = mm_hash_delete ($hash, $key);         $value = delete $tiedHash{$key};
- if(mm_hash_exists ($hash, $key)) {...}         if (exists $tiedHash{$key}) {...}
+ $ok = mm_hash_store($hash, $key, $value);      $tiedHash{$key} = $value;
+ $value = mm_hash_fetch($hash, $key);           $value = $tiedHash{$key};
+ $value = mm_hash_delete($hash, $key);          $value = delete $tiedHash{$key};
+ if(mm_hash_exists($hash, $key)) {...}          if (exists $tiedHash{$key}) {...}
  while(($key,$val)=mm_hash_entry($hash,$ix++))  while(($key,$val)=each %tiedHash)
      {...}                                          {...}
                                                 @keys = keys %tiedHash;
                                                 @values = values %tiedHash;
- $entries = mm_hash_scalar ($hash);             $entries = scalar %tiedHash;
- mm_hash_clear ($hash [, $entries]);            @tiedHash = ();
- $key = mm_hash_first_key ($array);
- $key = mm_hash_next_key ($array, $key);
- mm_free_hash ($hash);
+ $entries = mm_hash_scalar($hash);              $entries = scalar %tiedHash;
+ mm_hash_clear($hash [, $entries]);             @tiedHash = ();
+ $key = mm_hash_first_key($array);
+ $key = mm_hash_next_key($array, $key);
+ mm_free_hash($hash);
 
 =head1 DESCRIPTION
 
 IPC::MMA allows data to be shared among related Unix/Linux processes
-in a secure and natural way.  It provides methods to create and
+in a straightforward way.  It provides methods to create and
 destroy shared memory segments and to create, access, and maintain
 data structures within segments.  Perl scalars, arrays, and hashes
 can be stored in shared memory.  This version of IPC::MMA will not
@@ -85,7 +85,7 @@ But sometimes Perl scripts "have a larger agenda" that require them
 to do locking and unlocking themselves.  The most obvious example is
 updating a record in a shared array or hash:
 
-  if (mm_lock ($mm, MM_LOCK_RW) {
+  if (mm_lock($mm, MM_LOCK_RW) {
       $rec = mma_hash_fetch(hash, $key);  OR  $rec = $lockTiedHash{$key};
 
           ... update $rec ...
@@ -151,7 +151,8 @@ allowed size, which is platform dependent.  A small positive size
 allocates the minimum allowed size, which is 8KBytes on the author's
 platform.
 
-The file need not exist in advance.
+I<file> is the full-path name of a file that may or may not be used 
+for backing and/or locking purposes.  It need not exist in advance.
 
 =item B<$scalar = mm[a]_make_scalar($mm);>
 
@@ -165,7 +166,7 @@ I<mm_create>.
 
 I<alloc_entries> is an optional argument.  If a value greater than
 zero is supplied, the array's main block is allocated to have room
-for that many entries.  This will mean faster operation as the array
+for that many entries.  This may mean faster operation as the array
 is populated.  If the operand is omitted or zero, the main block
 is created with room for 64 entries.
 
@@ -192,23 +193,25 @@ that in an MM_INT_ARRAY.
 =item I<MM_DOUBLE_ARRAY>
 
 is like INT and UINT except that large and fractional numbers can be
-stored.  Perl terminology doesn't include "floating point" or "real",
-but you can apply these terms to this kind of array if you like.
+stored.  Terms from outside Perl that can be applied to entries 
+in such an array include "floating point", "real", and "long long".
+Depending on how your Perl system was built, INT_ARRAYs and DOUBLE_ARRAYs 
+may have the same maxima for integer values.
 
 =item I<MM_BOOL_ARRAY>
 
 values are stored as single bits packed in the array.
 
-=item a I<positive integer>
+=item I<a positive integer>
 
 in the type operand indicates an array in which each value is
 stored as a byte array of that length, or at least that maximum length.
 When a Perl scalar is stored in such an array, if its string
-representation is shorter than the array length, the stored value
-is padded out with ASCII NUL bytes (binary zeroes) after the
-last byte.  If the string representation of a Perl scalar
-being stored is longer than the array length,
-the rightmost bytes are discarded without notice.
+representation is shorter than the length specified here, the stored 
+value is padded out with ASCII NUL bytes (binary zeroes) after the
+last byte.  If the string representation of a Perl scalar being stored 
+is longer than the length specified here, the rightmost bytes are 
+discarded without notice.
 
 I<option> is itself optional, and at this time is used only for arrays
 with a positive integer as the I<type> argument.  For such arrays it
@@ -216,17 +219,17 @@ can be either I<MM_FIXED_REC> or I<MM_CSTRING>.
 
 When an entry in a fixed-length array using I<MM_FIXED_REC> is fetched
 back into a Perl scalar, the value is always stored as exactly the
-length associated with the array.  This option is useful for "records"
+length specified for the array.  This option is useful for "records"
 containing packed binary data.
 
 When an entry in a fixed-length array using I<MM_CSTRING> is fetched
 back into a Perl scalar, its length is determined by the first ASCII
-NUL (zero) character within the stored data, or the array length if
-there are no NULs in the stored data.
+NUL (zero) character within the stored data, or the specified length 
+if there are no NULs in the stored data.
 
 =back
 
-=item B<$hash = mm[a]_make_hash ($mm [, alloc_entries]);>
+=item B<$hash = mm[a]_make_hash($mm [, alloc_entries]);>
 
 creates a empty shared hash.  I<$mm> is the return value from
 mm_create.  I<alloc_entries> is optional as described for
@@ -313,7 +316,7 @@ and the new element will have the following value:
     fixed length:     ASCII NULs
 
 If I<$ix> is negative, the element is selected from the end of the
-array.  (-1 selects the last element of the array.)
+array.  (-1 selects the last element of the array.) 
 L</"Unwrapped Arrays"> describes how to avoid this behavior.
 
 I<mm[a]_array_store> returns false and produces a warning message if:
@@ -557,9 +560,9 @@ Neither of the following import any names:
     use IPC::MMA;
     use IPC::MMA();
 
-In which case you can spell out IPC::MMA names fully:
+in which case you must spell out IPC::MMA names fully:
 
-    $mm = IPC::MMA::mm_create (1<<16, "/tmp/lockfile");
+    $mm = IPC::MMA::mm_create(1<<16, "/tmp/lockfile");
 
 
 =head2 Locking
@@ -589,8 +592,8 @@ If I<mm_lock> is called by a process that already has the same lock,
 the call returns true and there is no other result.  There is no
 "depth" or counting to I<mm> locks.  A I<RD> lock can be upgraded
 to an I<RW> lock without unlocking, but the requesting process has
-to wait for all I<RD> locks to be released before the I<RW> lock
-is granted.
+to wait for any and all other I<RD> locks to be released before the 
+I<RW> lock is granted.
 
 =item B<$ok = mm_unlock($mm);>
 
@@ -600,7 +603,7 @@ does not hold a lock, true is returned anyway.
 
 =item B<Usage>
 
-    if (mm_lock ($mm, MM_LOCK_R?)) {
+    if (mm_lock($mm, MM_LOCK_R?)) {
 
         use "mma_" calls and/or variables tied with "IPC_MMA" methods.
 
@@ -771,7 +774,7 @@ None of the calls in this section have tied equivalents.
 
 =item B<Freeing a Scalar>
 
- mm_free_scalar ($scalar);
+ mm_free_scalar($scalar);
 
 If a Perl scalar is tied to I<$scalar>, it's good
 practice to I<untie> it before this call.  Memory occupied by this
@@ -780,7 +783,7 @@ I<$scalar> is a return value from I<mm_make_scalar>.
 
 =item B<Freeing an Array>
 
- mm_free_array ($array);
+ mm_free_array($array);
 
 If a Perl array is tied to I<$array>, it's good
 practice to I<untie> it before this call.  Memory occupied by this
@@ -792,7 +795,7 @@ I<clear>).
 
 =item B<Freeing a Hash>
 
- mm_free_hash ($hash);
+ mm_free_hash($hash);
 
 If a Perl hash is tied to I<$hash>, it's good
 practice to I<untie> it before this call.  Memory occupied by this
@@ -804,7 +807,7 @@ I<clear>).
 
 =item B<Destroying the Shared Memory>
 
- mm_destroy ($mm);
+ mm_destroy($mm);
 
 This returns the shared memory to the operating system and
 other applications.  This call should only be made by the last
@@ -817,7 +820,7 @@ acknowledged that the shared memory can no longer be used.
 
 =over 4
 
-=item B<$ok = mm[a]_array_storesize ($array, $entries);>
+=item B<$ok = mm[a]_array_storesize($array, $entries);>
 
 The number of elements in I<$array> is set to I<$entries>, which
 can be smaller or larger than the previous number of entries.
@@ -834,8 +837,8 @@ value:
 
 =item B<Traversing a Hash>
 
- $key = mm[a]_hash_first_key ($hash);
- $key = mm[a]_hash_next_key ($hash, $key);
+ $key = mm[a]_hash_first_key($hash);
+ $key = mm[a]_hash_next_key($hash, $key);
 
 These calls are used by the Perl interpreter to implement Perl's
 I<each>, I<keys> and I<values> operations.  I<first> returns
@@ -894,7 +897,7 @@ incrementing C<$i>) to avoid skipping an entry.
 This routine is part of the I<mm> library, and returns the largest
 size that a shared memory pool can have on this platform, in bytes.
 
-=item B<$avail = mm_available ($mm);>
+=item B<$avail = mm_available($mm);>
 
 This routine is part of the I<mm> library, and returns the number
 of bytes currently available (unused) in the shared memory.
@@ -903,7 +906,7 @@ call in a reporting routine to tell if you allocated more memory
 than your application needs.  (Allocating too little will be known
 by simpler means: 'out of memory' error messages.)
 
-=item B<$rc = mm_permission ($mm, mode, owner, group);>
+=item B<$rc = mm_permission($mm, mode, owner, group);>
 
 This routine is part of the I<mm> library, and sets the
 permissions of the file named in the I<mm_create> call.  It should
@@ -923,7 +926,7 @@ even then because such child processes will inherit the filehandle
 for the lockfile.  But the author of I<mm> saw fit to include this
 call in his library, so IPC::MMA is obliged to "pass it along".
 
-=item B<mm_display_info ($mm);>
+=item B<mm_display_info($mm);>
 
 This routine is part of the I<mm> library, and displays some
 interesting information about the shared memory.  Unfortunately
@@ -951,7 +954,7 @@ These values represent:
 This function returns (8, 8, 4, 4, 8, 64) on the author's platform.
 It may return larger values on other platforms.
 
-  $roundedSize = mm_round_up ($size);
+  $roundedSize = mm_round_up($size);
 
 The argument is rounded up, if necessary, to the next multiple
 of the unit of memory allocation (I<$allocSize> in the previous call).
@@ -963,9 +966,8 @@ of the unit of memory allocation (I<$allocSize> in the previous call).
 =head2 mm_error();
 
 This routine is part of the I<mm> library, and returns a string
-describing the most recent error, or a null string if no error
-message was posted.  I<mm> routines post to this facility, and
-so do some IPC::MMA routines.
+describing result of the most recent shared memory operation.  
+I<mm> routines post to this facility, and so do some IPC::MMA routines.
 
 =head2 Handling Errors
 
@@ -1005,8 +1007,8 @@ facility of IPC::MMA arrays.
 =head2 Hash Key Ordering
 
 IPC:MMA hashes (like IPC:MM BTrees) maintain their keys in the
-order that is natural for I<byte arrays>.  IPC::MMA uses the C
-library routine I<memcmp> for key comparisons.  No international,
+order that is natural for I< unsigned byte arrays>.  IPC::MMA uses 
+the C library routine I<memcmp> for key comparisons.  No international,
 UTF, ISO, or Unicode sorting is available at this time.
 
 Applications that use numeric values as hash keys, and want them
@@ -1016,7 +1018,8 @@ Use the following technique when storing:
     $mmaKey = pack 'N', $numeric_key;
 
 You may need to unpack the key when retrieving.  This works for
-unsigned integers.  For signed 32-bit integers try this when storing:
+unsigned integers.  For signed 32-bit integers (on a Perl system 
+built for 32-bit integers) try this when storing:
 
     $mmaKey = pack 'N', $numeric_key + 2147483648; # no warranty!
 
@@ -1029,8 +1032,8 @@ ordered, consult L<http://www.perlmonks.org>.
 
 IPC::MMA "hashes" do not hash keys.  They maintain their entries
 in sorted order on their keys, but they are not BTrees.  They use
-a very simple internal organization that is optimized for key-value
-pairs in an internal memory of limited extent.
+a simple internal organization that is optimized for key-value pairs 
+in an internal memory of limited extent.
 
 An IPC::MMA hash has a small I<header block> in shared memory,
 that includes a pointer to a I<pointer block> than contains
@@ -1053,16 +1056,16 @@ of the hash.  A binary search is slower than a hashing algorithm for
 small numbers of entries, but that's not the interesting end of 
 the distribution of applications.  If there are more than a hundred 
 entries a binary search is competitive with a true hash in 
-performance, and for large numbers of entries a binary search is 
+performance, and for thousands of entries a binary search is 
 faster.  Also the memory requirements of this structure are less 
 than for a BTree or a true hash.
 
-Zero-length values are handled by leaving the value pointer in
-the I<key block> zero (NULL).  A zero-length key (there can be only
-one such key in a hash) is handled by making the I<key block>
-contain just the number of bytes in the value pointer.  A request
-to store either an undefined key or an undefined value is rejected
-with an error message.
+IPC::MMA handles zero-length values (empty strings)  by leaving the 
+value pointer in the I<key block> zero (NULL).  IPC::MMA handles a 
+zero-length key (there can be only one such key in a hash) by making 
+the I<key block> contain just the number of bytes in the value 
+pointer.  A request to store either an undefined key or an undefined 
+value is rejected with an error message.
 
 =head2 Unwrapped Arrays
 

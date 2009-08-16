@@ -8,6 +8,8 @@ use Test::More tests => 143;
 use Test::Warn;
 use IPC::MMA qw(:basic :array);
 
+use constant ARRAY_SIZE => 32;
+
 # this encoder makes a zero-length string for a 0 argument
 sub n2alpha {
     my $n = shift;
@@ -48,8 +50,6 @@ ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
     && $IVSIZE && $IVSIZE <= 16
     && $NVSIZE && $NVSIZE <= 16
     && $DEFENTS && $DEFENTS <= 256, "read allocation sizes");
-
-use constant ARRAY_SIZE => 32;
 
 # this may increase if we split out an options word
 my $MM_ARRAY_ROOT_SIZE = mm_round_up(2*$PSIZE + 3*$IVSIZE);
@@ -165,7 +165,7 @@ is ($avail4 - $avail3, $expect,
 
 # test 90: delete -1 with nowrap should not
 ok (!defined mm_array_delete_nowrap ($array, -1), 
-    "delete -1 element with nowarp should fail");
+    "delete -1 element with nowarp shoyld fail");
 
 # test 91: array size again
 is (mm_array_fetchsize ($array), ARRAY_SIZE - 1, 
@@ -208,7 +208,8 @@ is (mm_array_fetch ($array, MIDDLE_INDEX+1), n2alpha(MIDDLE_INDEX+1),
     "element after middle delete is still there");
     
 # test 100: try pop
-is (mm_array_pop ($array), n2alpha(ARRAY_SIZE - 2), 
+my $n2aM2 = n2alpha(ARRAY_SIZE - 2);
+is (mm_array_pop ($array), $n2aM2, 
     "pop array returns proper value");
 
 # test 101
@@ -226,7 +227,8 @@ is (mm_array_fetch ($array, ARRAY_SIZE - 2), undef,
     "get popped element should return undef");
 
 # test 104
-is (mm_array_fetch ($array, ARRAY_SIZE - 3), n2alpha(ARRAY_SIZE - 3), 
+my $n2aM3 = n2alpha(ARRAY_SIZE - 3);
+is (mm_array_fetch ($array, ARRAY_SIZE - 3), $n2aM3, 
     "element before popped one should be unchanged");
 
 # test 105
@@ -248,11 +250,11 @@ is ($shiftCount, 0,
     "push should not affect shift count");
 
 # test 109
-is (mm_array_fetch ($array, ARRAY_SIZE - 2), n2alpha(ARRAY_SIZE - 2), 
+is (mm_array_fetch ($array, ARRAY_SIZE - 2), $n2aM2, 
     "get pushed element");
 
 # test 110
-is (mm_array_fetch ($array, ARRAY_SIZE - 3), n2alpha(ARRAY_SIZE - 3), 
+is (mm_array_fetch ($array, ARRAY_SIZE - 3), $n2aM3, 
     "element before pushed one should be unchanged");
 
 # test 111
@@ -261,7 +263,8 @@ is ($avail7, $avail5,
     "avail mem after push should == before pop");
     
 # test 112: try shift
-is (mm_array_shift ($array), n2alpha(0),
+my $n2a0 = n2alpha(0);
+is (mm_array_shift ($array), $n2a0,
     "shift returns proper value");
     
 # test 113
@@ -274,7 +277,8 @@ is ($shiftCount, 1,
     "shift should increase shift count by 1");
     
 # test 115
-is (mm_array_fetch ($array, 0), n2alpha(1),
+my $n2a1 = n2alpha(1);
+is (mm_array_fetch ($array, 0), $n2a1,
     "check element 0 after shift");
 
 # test 116
@@ -283,7 +287,7 @@ is ($avail8, $avail7,
     "shifting off a zero-length string should have no effect on avail mem");
 
 # test 117: unshift two values into front of array
-is (mm_array_unshift ($array, 2009, n2alpha(0)), ARRAY_SIZE, 
+is (mm_array_unshift ($array, 2009, $n2a0), ARRAY_SIZE, 
     "unshift should return array size");
     
 # test 118
@@ -300,11 +304,11 @@ is (mm_array_fetch ($array, 0), 2009,
     "check first unshifted value");
 
 # test 121
-is (mm_array_fetch ($array, 1), n2alpha(0),
+is (mm_array_fetch ($array, 1), $n2a0,
     "check 2nd unshifted value");
     
 # test 122
-is (mm_array_fetch ($array, 2), n2alpha(1),
+is (mm_array_fetch ($array, 2), $n2a1,
     "check value following unshifted ones");
 
 # test 123
@@ -318,11 +322,11 @@ is (scalar @dels, 2,
     "splice with 2 deleted should return 2 elements");
 
 # test 125
-is ($dels[0], n2alpha(0),
+is ($dels[0], $n2a0,
     "1st element returned by splice");
 
 # test 126
-is ($dels[1], n2alpha(1),
+is ($dels[1], $n2a1,
     "2nd element returned by splice");
 
 # test 127

@@ -1052,7 +1052,7 @@ void mm_array_clear (mm_array *array, UV entries, int prelocked) {
         } else mm_err_cant_lock;
 }   }
 
-/* free all of the memory used by an array, pre-locked */
+/* free all of the memory used by an array */
 
 void mm_free_array (mm_array *array, int prelocked) {
 
