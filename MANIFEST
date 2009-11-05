@@ -32,7 +32,6 @@ inc/Devel/AssertOS/Irix.pm
 inc/Devel/AssertOS/AIX.pm
 inc/Devel/AssertOS/QNX.pm
 inc/Devel/AssertOS.pm
-inc/Devel/CheckLib.pm
 inc/Devel/CheckOS.pm
 Makefile.PL
 MANIFEST

@@ -30,6 +30,13 @@ INSTALLATION
   IPC::MMA.  Many Unix/Linux systems include this library.  If you
   need to download and install mm, see the web site at the URL in
   the preceding paragraph.
+  
+  Experienced users may prefer to install mm from a different source:
+  
+  debian/ubuntu: $ sudo apt-get install libmm-dev
+  FreeBSD ports: $ cd ports/devel/mm          # (wherever ports lives)
+                 $ sudo make
+                 $ sudo make install
 
   The easy way to install IPC::MMA:
 
@@ -68,7 +75,7 @@ INSTALLATION
 
 
 NOTES
-    This module requires perl 5.8 or later.
+    This module requires perl 5.6 or later.  (5.8 recommended)
 
     The initial use of the array functions of this module was to track
     related-file accesses on our Apache web server, and thus optimize

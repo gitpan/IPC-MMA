@@ -1,6 +1,6 @@
 #define MM_PRIVATE
 #include "mm.h"
-
+#include "mma_alloc.h"
 /*
  * Insert a chunk to the list of free chunks. Algorithm used is:
  * Insert in sorted manner to the list and merge with previous

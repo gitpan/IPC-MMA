@@ -8,11 +8,19 @@ use Test::More tests => 142;
 
 our ($hash, $entries);
 our %checkHash;
+our $isrand = open (RAND, "</dev/urandom");
 
 sub randStr {
     my $len = int(rand shift())+1; 
     my $ret = '';
-    if ($len) {sysread (RAND, $ret, $len)}
+    my ($r, $le);
+    if ($len) {
+        if ($isrand) {sysread (RAND, $ret, $len)}
+        else {
+            while (($le = $len - length($ret)) > 0) {
+                $r = pack 'L', int(rand(0xFFFFFFFF));
+                $ret .= $le >= 4 ? $r : substr($r, 0, $le);
+    }   }   }
     return $ret;
 }
 
@@ -24,8 +32,6 @@ sub shoHex {
     }
     return $ret;
 }
-
-open (RAND, "</dev/random") or die "Can't open /dev/random for read: $!\n";
 
 # test 1 is use_ok
 BEGIN {use_ok ('IPC::MMA', qw(:basic :hash))}

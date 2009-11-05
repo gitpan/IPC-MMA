@@ -129,8 +129,9 @@ if ($id==1) {
     }
     
 } elsif ($id==3) {
-    # a short while after process 3 (which has no lock at all) sees 20, 
-    # it requests a read lock (1 will have gotten its write lock by then)  
+    # a short while after process 3 (which has no lock at all) sees 19, 
+    #  sets 20 and requests a read lock (1 will have gotten its write 
+    #  lock by then)  
     while ($var < 19) {usleep 10}
     usleep 200;  # make sure #1 has requested its lock and is waiting
     $var = 20;
@@ -149,13 +150,13 @@ if ($id==1) {
     }
     
 } elsif (!$id) {
-    # when process 0 sees 19, it releases its read lock and 
-    #  advances to 20
+    # when process 0 sees 20, it releases its read lock and 
+    #  advances to 21
     # then it continues to wait until a timeout, or it sees one of 
     #  the terminating values
     $var = 18;
     my $t20 = 0;
-    while ($var < 25 && $timer < 4000) {
+    while ($var < 25 && $timer < 20000) {
         if ($var == 20) {
             if (($t20 ||= $timer+1)
              && $timer >= $t20 + 200) {$var = mm_unlock($mm) ? 21 : 90}

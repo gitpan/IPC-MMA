@@ -9,10 +9,18 @@ use IPC::MMA qw(:basic :array);
 
 our ($array, $var_size_bytes);
 our (@mmArray, @checkArray);
+our $isrand = open (RAND, "</dev/urandom");
 
 sub randVar {
     my $ret = '';
-    if ($_ = int(rand 256)) {sysread (RAND, $ret, $_)}
+    my ($r, $le);
+    if ($_ = int(rand 256)) {
+        if ($isrand) {sysread (RAND, $ret, $_)}
+        else {
+            while (($le = $_ - length($ret)) > 0) {
+                $r = pack 'L', int(rand(0xFFFFFFFF));
+                $ret .= $le >= 4 ? $r : substr($r, 0, $le);
+    }   }   }
     return $ret;
 }
 
@@ -38,8 +46,6 @@ sub compArray {
     for (my $i=0; $i <$size1; $i++) {
         is ($$array1ref[$i], $$array2ref[$i], "$testName: element $i");
 }   }
-
-open (RAND, "</dev/random") or BAIL_OUT("Can't open /dev/random for read: $!\n");
 
 # test 1: create acts OK
 my $mm = mm_create ((1<<20) - 200, '/tmp/test_lockfile');

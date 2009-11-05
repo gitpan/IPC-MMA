@@ -1,5 +1,16 @@
 Revision history for IPC::MMA
 
+0.58001 Oct 23 2009
+      * Changed tests 5, 7, 8 to use /dev/urandom (or perl rand) rather 
+        than /dev/random to avoid entropy delays on newly-started Linux 
+        systems.  Thanks to Oliver Paukstadt for this suggestion.
+      * Extended final timeout in test 9 to accomodate heavily-loaded 
+        smoke-test systems.
+      * Reworked detection of mm library in Makefile.PL.  New version 
+        tries to balance the needs of smoke-testers vs. regular users.
+        Thanks to David Golden for his advice on this.
+      * Added license=>perl to Makefile.PL to make YAML reviewers happy
+
 0.58  Aug 15 2009
       Included revised t/2_mmArray.t to try to fix 0.54 failure 
       (inadvertently omitted from 0.55-57)

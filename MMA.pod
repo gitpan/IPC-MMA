@@ -433,8 +433,8 @@ These operations return I<undef> if:
     * $ix is negative and its absolute value is greater than the 
       number of elements in the array,
     * for an MM_ARRAY, if the selected element has been deleted, or
-    * if the selected element was created by a store to a higher-
-        numbered element or a I<storesize> with a large number of
+    * the selected element was created by a store to a higher-
+        numbered element or a storesize with a large number of
         entries, but element $ix has been never been stored into.
 
 =item B<Retrieving from a Hash by Key>
@@ -626,9 +626,9 @@ the fact clearly for anyone who comes after (including you)!
 
 =head2 Splicing an Array
 
- DIRECT CALL      @deleted = mm[a]_array_splice($array,$ix,$delCt,list);
- TIED EQUIVALENTS @deleted = splice        (@tiedArray,$ix,$delCt,list);
-                  @deleted = splice    (@lockTiedArray,$ix,$delCt,list);
+ DIRECT CALL      @deleted = mm[a]_array_splice($array, $ix, $delCt, list);
+ TIED EQUIVALENTS @deleted = splice        (@tiedArray, $ix, $delCt, list);
+                  @deleted = splice    (@lockTiedArray, $ix, $delCt, list);
 
 These can delete and/or insert elements at any point in an array.
 I<$ix> specifies where the changes are to occur.
@@ -676,8 +676,8 @@ These operations return false if:
     * $ix is negative and its absolute value is greater than the number 
       of elements in the array,
     * for an MM_ARRAY, if the selected element has been deleted, or
-    * if the selected element was created by a store to a higher-
-        numbered element or a I<storesize> with a large number of entries,
+    * the selected element was created by a store to a higher-
+        numbered element or a storesize with a large number of entries,
         but index $ix has been never been stored into.
 
 =item B<Existence in a Hash>
@@ -1000,7 +1000,7 @@ array, the sum of the first two returned values is the same
 the element is shifted out.
 
 The author hopes to post a module named I<Apache2::CloseKeepAlive>
-to CPAN in 1H09 that will be an example of using the I<shiftCount> 
+to CPAN soon, that will be an example of using the I<shiftCount> 
 facility of IPC::MMA arrays.
 
 
@@ -1091,6 +1091,13 @@ IPC::MMA is based on Ralf Engelschall's I<mm> library, which is
 included in many Unix/Linux systems.  If it's not installed in
 your system, it can be downloaded from
 L<http://www.ossp.org/pkg/lib/mm/>.
+
+Experienced users may prefer to install mm from a different source:
+  
+ debian/ubuntu: $ sudo apt-get install libmm-dev
+ FreeBSD ports: $ cd ports/devel/mm        # (wherever ports lives)
+                $ sudo make
+                $ sudo make install          
 
 A major part of rationalizing locking in IPC::MMA was to create
 alternative versions of some routines in I<mm>, with I<mm_lock>
