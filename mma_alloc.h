@@ -8,8 +8,8 @@ void *mma_malloc(MM *, size_t);
 void  mma_free  (MM *, void *);
 int   mma_sizeok (void *ptr, const size_t usize);
 
-/* SGI compiler doesn't know inline */
-#if defined(_SGIAPI) || defined( __sgi )
+/* some compilers don't know inline */
+#ifdef NOINLINE
 #define inline
 #endif
 inline int mma_alloc_mask(void);

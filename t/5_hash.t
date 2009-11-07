@@ -67,7 +67,7 @@ ok (defined $hash && $hash, "make hash");
 my $avail2 = mm_available ($mm);
 my $expect = 2*$ALLOCBASE + $MM_HASH_ROOT_SIZE + mm_round_up($PSIZE * $DEFENTS);
 is ($avail2 - $memsize, -$expect,
-    "effect of making default-alloc hash on avil mem");
+    "effect of making default-alloc hash on avail mem");
 
 # tests 7-134: populate the hash
 my ($i, $rc, $key, $value, $exists, $dups);

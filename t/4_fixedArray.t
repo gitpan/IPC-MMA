@@ -9,7 +9,8 @@ use IPC::MMA qw(:basic :array);
 
 our @typeNames = ("MM_ARRAY", "MM_UINT_ARRAY", "MM_INT_ARRAY", "MM_DOUBLE_ARRAY");
 
-our ($array, $type, $entries, $var_size_bytes, $umax);
+# removed $entries 11/5/09
+our ($array, $type, $var_size_bytes, $umax);
 our @checkArray;
 
 sub typeName {

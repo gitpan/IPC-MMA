@@ -1,5 +1,18 @@
 Revision history for IPC::MMA
 
+0.59003 Nov 6 2009
+      * Fixed numerous C weaknesses in MMA.xs, that were revealed by 
+        smoketest systems with more rigorous C compilers than gcc-x86.
+        More such fixing may be needed.
+      * Tried to fix a problem under perl 5.6, wherein storing into 
+        UINT arrays gave unwarranted errors for values with the MS bit 
+        set.  Fingers crossed for this perlguts issue!
+      * Removed -s option from 'which mm-config' command in Makefile.PL.
+        Some which'es don't implement -s.
+      * Restricted cc '-Os' option (optimize for size) to those systems 
+        that can handle it (e.g., gcc).
+      * Restricted 'inline' functions to compilers that can handle them.
+
 0.58001 Oct 23 2009
       * Changed tests 5, 7, 8 to use /dev/urandom (or perl rand) rather 
         than /dev/random to avoid entropy delays on newly-started Linux 

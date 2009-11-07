@@ -1,9 +1,10 @@
 use lib inc; 
 use Devel::AssertOS qw(Unix OS390 BeOS Cygwin);
+use Config;
 use ExtUtils::MakeMaker;
 
 my $binpath = 'mm-config';
-if (system "which -s $binpath") {
+if (system "which $binpath>/dev/null") {
 
     # mm-config is not in PATH, but maybe it's installed outside PATH
     print "$binpath not in PATH: trying to find it...\n";
@@ -29,6 +30,17 @@ my $cflags = `$binpath --cflags`;
 my $libs   = `$binpath --ldflags --libs`;
 chomp $cflags, $libs;
 
+# test cc optimize by size (OK in gcc, possibly others)
+my $optOpt = '-Os';
+if (system($Config{'cc'}, '-c', $optOpt, 'test.c')) {$optOpt = '-O2'}
+
+# see if cc can handle 'inline' keyword
+my @moreStuff = ();
+if (system($Config{'cc'}, '-c', 'test_inline.c')) {
+    @moreStuff = ('DEFINE', '-DNOINLINE');
+}
+unlink('test.o', 'test_inline.o');
+
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 
@@ -38,7 +50,7 @@ WriteMakefile(
     'LIBS'         => [$libs],            # e.g., '-lm' 
     'LICENSE'      => 'perl',
     'OBJECT'       => 'mma_alloc.o MMA.o',
-    'OPTIMIZE'     => '-Os',              # '-Os' for release, '-g' for debug
+    'OPTIMIZE'     => $optOpt,            # '-Os' for release, '-g' for debug
     'PREREQ_PM'    => {'Test::Warn'=>'0.11', 'ExtUtils::ParseXS'=>'2.200401'},
-    'VERSION_FROM' => 'MMA.pm'            # finds $VERSION
-);
+    'VERSION_FROM' => 'MMA.pm',           # finds $VERSION
+    @moreStuff);

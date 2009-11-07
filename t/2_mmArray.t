@@ -237,7 +237,7 @@ is ($avail6 - $avail5, $expect,
     "effect of pop on avail mem");
 
 # test 106: push it back
-is (mm_array_push ($array, n2alpha(ARRAY_SIZE - 2)), ARRAY_SIZE - 1,
+is (mm_array_push ($array, $n2aM2), ARRAY_SIZE - 1,
     "push should return array size");
 
 # test 107
