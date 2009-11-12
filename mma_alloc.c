@@ -1,6 +1,5 @@
 #define MM_PRIVATE
 #include "mm.h"
-#include "mma_alloc.h"
 /*
  * Insert a chunk to the list of free chunks. Algorithm used is:
  * Insert in sorted manner to the list and merge with previous
@@ -212,6 +211,7 @@ int mma_sizeok (void *ptr, const size_t usize) {
 
 /* 
  * Return allocation block size and allocation base size
- */
+   inline is removed if necessary by Makefile.PL */
+
 inline int mma_alloc_mask(void) {return sizeof(union mem_chunk_mc_u)-1;}
 inline int mma_alloc_base(void) {return SIZEOF_mem_chunk;}

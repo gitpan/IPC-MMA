@@ -1,12 +1,19 @@
 Revision history for IPC::MMA
 
+0.6     Nov 11 2009
+      * Another try to fix the problem under perl 5.6, wherein storing 
+        into UINT arrays gives unwarranted errors for large values.
+      * Improved the mechanism for eliminating 'inline' on cc's that 
+        don't support it.
+      * Yet another tweak to t/9_lock.t, which has still had some 
+        "hang at state 23" errors on some smoke-testers' systems.
+
 0.59003 Nov 6 2009
       * Fixed numerous C weaknesses in MMA.xs, that were revealed by 
         smoketest systems with more rigorous C compilers than gcc-x86.
-        More such fixing may be needed.
       * Tried to fix a problem under perl 5.6, wherein storing into 
         UINT arrays gave unwarranted errors for values with the MS bit 
-        set.  Fingers crossed for this perlguts issue!
+        set.
       * Removed -s option from 'which mm-config' command in Makefile.PL.
         Some which'es don't implement -s.
       * Restricted cc '-Os' option (optimize for size) to those systems 

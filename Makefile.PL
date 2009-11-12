@@ -37,7 +37,7 @@ if (system($Config{'cc'}, '-c', $optOpt, 'test.c')) {$optOpt = '-O2'}
 # see if cc can handle 'inline' keyword
 my @moreStuff = ();
 if (system($Config{'cc'}, '-c', 'test_inline.c')) {
-    @moreStuff = ('DEFINE', '-DNOINLINE');
+    @moreStuff = ("DEFINE", "-D'inline=/* Inline */'");
 }
 unlink('test.o', 'test_inline.o');
 

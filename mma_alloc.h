@@ -8,11 +8,7 @@ void *mma_malloc(MM *, size_t);
 void  mma_free  (MM *, void *);
 int   mma_sizeok (void *ptr, const size_t usize);
 
-/* some compilers don't know inline */
-#ifdef NOINLINE
-#define inline
-#endif
+/* inline is removed if necessary by Makefile.PL */
 inline int mma_alloc_mask(void);
 inline int mma_alloc_base(void);
-
 #endif /* _MMA_ALLOC_H_ */
