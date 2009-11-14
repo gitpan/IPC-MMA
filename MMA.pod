@@ -1093,7 +1093,7 @@ your system, it can be downloaded from
 L<http://www.ossp.org/pkg/lib/mm/>.
 
 Experienced users may prefer to install mm from a different source:
-  
+
  debian/ubuntu: $ sudo apt-get install libmm-dev
  FreeBSD ports: $ cd ports/devel/mm        # (wherever ports lives)
                 $ sudo make
@@ -1109,16 +1109,25 @@ compatibility.
 
 =head1 AUTHOR
 
-Copyright (c) 2008-2009, Craig MacKenna <craig@animalhead.com>.
-All rights reserved.
+Craig MacKenna <craig@animalhead.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2008-2009, Craig MacKenna
+
+This module is free software; you may redistribute it and/or
+modify it under the same terms as Perl 5.10.1.  For more details, 
+see the full text of the licenses at
+
+ L<http://www.perlfoundation.org/artistic_license_1_0> and
+ L<http://www.gnu.org/licenses/gpl-2.0.html>.
+
+This program is distributed in the hope that it will be useful, but 
+it is provided “as is” and without any express or implied warranties. 
+For details, see the full text of the licenses at the above URLs.
 
 This module uses concepts from IPC::MM, which is Copyright (c)
-1999, Arthur Choung <arthur@etoys.com>.
-
-=head1 USAGE
-
-This module is free software; you may redistribute it
-and/or modify it under the same terms as Perl itself.
+1999, Arthur Choung.
 
 =head1 IPC::MM COMPATIBILITY
 

@@ -398,28 +398,27 @@ size_t mm_alloc_len (enum mm_array_t type, UV entries) {
 I32 grokN(SV *sv, enum mm_array_t type) {
     register const char *sbegin;
     STRLEN len;
+    I32 flgs = SvFLAGS(sv);
 
-    if (SvPOK(sv)) {
+    if (flgs & SVf_POK) {
         sbegin = SvPVX_const(sv);
         len = SvCUR(sv);
-    } else if (SvPOKp(sv)) sbegin = SvPV_const(sv, len);
-    else {
-        /* this sv did not come from a string */
-        if (!(SvFLAGS(sv) & (SVf_NOK|SVp_NOK|SVf_IOK|SVp_IOK))) return 0;
+    } else {
+        if (!(flgs & (SVp_POK|SVf_NOK|SVp_NOK|SVf_IOK|SVp_IOK))) return 0;
+        sbegin = SvPV_const(sv, len);
 
 #if PERL_VERSION < 8
         /* The following is an attempt to cope with perl 5.6.2 with
             UVSIZE == 8, under which SvPV stringifies sv's in the
             top half of the UV range in E-notation, thus fouling up
-            grok_number's analysis. */
-        if (type == MM_UINT_ARRAY) {
-            NV nv = SvNV(sv);
-            return nv < UV_MIN ? IS_NUMBER_NEG
-                               : nv > UV_MAX ? IS_NUMBER_GREATER_THAN_UV_MAX
-                                             : IS_NUMBER_IN_UV;
+            grok_number */
+        if (type == MM_UINT_ARRAY
+         && !(flgs & (SVp_POK|SVf_NOK|SVp_NOK))) {
+            /* only SVf_IOK and/or SVp_IOK */
+            return strchr(sbegin, '-') ? IS_NUMBER_NEG
+                                       : IS_NUMBER_IN_UV;
         }
 #endif
-        sbegin = SvPV_const(sv, len);
     }
     return grok_number(sbegin, len, NULL);
 }
@@ -832,8 +831,9 @@ void mm_array_splice_bool_contract (mm_array *array, UV index,
         /* do the lowest-addressed word */
         right_mask = BITNO_TO_RIGHTMASK(index);
         this = *src_ad++;
-        *dest_ad++ = *dest_ad & ~right_mask
+        *dest_ad = *dest_ad & ~right_mask
                  | (prev << second_shift | this >> first_shift) & right_mask;
+        dest_ad++;
 
         /* pull the rest of the array down (if any) */
         while (dest_ad <= last_dest_ad) {
@@ -1776,16 +1776,15 @@ mm_array_splice (array, offset, length, ...)
         SV *delSVs[del_count];
         UV add_count = items>3 ? items-3 : 0;
         SV *addSVs[add_count];
-        int i=0, j=0;
+        int i, j=0;
     PPCODE:
-        while (i < add_count) addSVs[i++] = ST(i+3);
+        for (i=0; i < add_count; i++) addSVs[i] = ST(i+3);
         if (!mm_array_splice (array,index,del_count,delSVs,add_count,addSVs,ix&1)) {
             if (PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
             del_count = 0;
         }
-        # "in scalar context, splice returns the last entry deleted"
-        # means just return all of them in either scalar or array mode
-
+        /* "in scalar context, splice returns the last entry deleted"
+           means just return all of them in either scalar or array mode */
         if (del_count || GIMME_V == G_ARRAY) {
             EXTEND (SP, del_count);
             while (j < del_count) XPUSHs(sv_2mortal(delSVs[j++]));
@@ -1821,9 +1820,9 @@ mm_array_push (array, ...)
     PREINIT:
         int add_count = items - 1;
         SV *addSVs[add_count];
-        int i=0;
+        int i;
     CODE:
-        while (i < add_count) addSVs[i++] = ST(i+1);
+        for (i=0; i < add_count; i++) addSVs[i] = ST(i+1);
         if (!mm_array_splice (array, array->entries, 0, NULL, add_count, addSVs, ix)
          && PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
         RETVAL = array->entries;
@@ -1866,9 +1865,9 @@ mm_array_unshift(array, ...)
     PREINIT:
         int add_count = items - 1;
         SV *addSVs[add_count];
-        int i=0;
+        int i;
     CODE:
-        while (i < add_count) addSVs[i++] = ST(i+1);
+        for (i=0; i < add_count; i++) addSVs[i] = ST(i+1);
         if (!mm_array_splice (array, 0, 0, NULL, add_count, addSVs, ix)
          && PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
         RETVAL = array->entries;

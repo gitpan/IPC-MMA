@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               IPC-MMA
-version:            0.59004
+version:            0.59005
 abstract:           ~
 author:  []
 license:            perl

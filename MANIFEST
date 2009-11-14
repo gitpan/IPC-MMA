@@ -52,7 +52,7 @@ t/6_tiedScalars.t
 t/7_tiedArray.t
 t/8_tiedHash.t
 t/9_lock.t
-test.c
 test_inline.c
+test.c
 typemap
 META.yml                                 Module meta-data (added by MakeMaker)
