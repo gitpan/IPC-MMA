@@ -1,4 +1,4 @@
-IPC::MMA is Copyright (C) 2008-2009, Craig MacKenna (craig@animalhead.com)
+IPC::MMA is Copyright (C) 2008-2009, Craig MacKenna <craig@animalhead.com>
 
 DESCRIPTION
 
@@ -7,15 +7,15 @@ DESCRIPTION
 
 LICENSE INFORMATION
 
-  This module is free software; you may redistribute it and/or modify 
-  it under the same terms as Perl 5.10.1.  For more details, see the 
+  This module is free software; you may redistribute it and/or modify
+  it under the same terms as Perl 5.10.1.  For more details, see the
   full text of the licenses at
-  
+
   <http://www.perlfoundation.org/artistic_license_1_0> and
   <http://www.gnu.org/licenses/gpl-2.0.html>.
 
-  This program is distributed in the hope that it will be useful, but 
-  it is provided “as is” and without any express or implied warranties. 
+  This program is distributed in the hope that it will be useful, but
+  it is provided "as is" and without any express or implied warranties.
   For details, see the full text of the licenses at the above URLs.
 
 PREREQUISITE
@@ -24,19 +24,18 @@ PREREQUISITE
   with version 1.4.2.  See http://www.ossp.org/pkg/lib/mm/ for more
   about mm.
 
+  Experienced users may prefer to install mm from a different source:
+
+  debian/ubuntu: $ sudo apt-get install libmm-dev
+  FreeBSD ports: $ cd ports/devel/mm        # (wherever ports lives)
+                 $ sudo make
+                 $ sudo make install
+
 INSTALLATION
 
   Your computer needs to have the mm library before you can use
   IPC::MMA.  Many Unix/Linux systems include this library.  If you
-  need to download and install mm, see the web site at the URL in
-  the preceding paragraph.
-  
-  Experienced users may prefer to install mm from a different source:
-  
-  debian/ubuntu: $ sudo apt-get install libmm-dev
-  FreeBSD ports: $ cd ports/devel/mm          # (wherever ports lives)
-                 $ sudo make
-                 $ sudo make install
+  need to download and install mm, see the preceding section.
 
   The easy way to install IPC::MMA:
 

@@ -7,7 +7,7 @@ use warnings;
 use IPC::MMA qw(:basic :hash);
 
 sub randStr {
-    my $len = int(rand shift())+1; 
+    my $len = int(rand shift())+1;
     my $ret = '';
     if ($len) {sysread (RAND, $ret, $len)}
     return $ret;
@@ -29,7 +29,7 @@ print "please wait while half of the max shared memory is populated\n";
 do {
     $key = randStr(16);
     $value = randStr(256);
-    
+
     mm_hash_store ($hash, $key, $value) or die "can't store record";
     $nStores++;
     $keys{$key}=1;

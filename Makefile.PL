@@ -1,4 +1,6 @@
-use lib inc; 
+use strict;
+use warnings;
+use lib 'inc';
 use Devel::AssertOS qw(Unix OS390 BeOS Cygwin);
 use Config;
 use ExtUtils::MakeMaker;
@@ -28,29 +30,37 @@ if (system "which $binpath>/dev/null") {
 # mm-config provides parameters to link with the mm library
 my $cflags = `$binpath --cflags`;
 my $libs   = `$binpath --ldflags --libs`;
-chomp $cflags, $libs;
+chomp ($cflags, $libs);
 
 # test cc optimize by size (OK in gcc, possibly others)
 my $optOpt = '-Os';
 if (system($Config{'cc'}, '-c', $optOpt, 'test.c')) {$optOpt = '-O2'}
 
 # see if cc can handle 'inline' keyword
-my @moreStuff = ();
-if (system($Config{'cc'}, '-c', 'test_inline.c')) {
-    @moreStuff = ("DEFINE", "-D'inline=/* Inline */'");
-}
+$_ = `$Config{'cc'} -c test_inline.c 2>&1`;
+my @moreStuff = /\b(warning|error)\b/i ? ("DEFINE" => "-D'inline=/* Inline */'")
+                                       : ();
 unlink('test.o', 'test_inline.o');
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 
 WriteMakefile(
-    'NAME'         => 'IPC::MMA',
-    'INC'          => $cflags,            # e.g., '-I/usr/include/other'
-    'LIBS'         => [$libs],            # e.g., '-lm' 
-    'LICENSE'      => 'perl',
-    'OBJECT'       => 'mma_alloc.o MMA.o',
-    'OPTIMIZE'     => $optOpt,            # '-Os' for release, '-g' for debug
-    'PREREQ_PM'    => {'Test::Warn'=>'0.11', 'ExtUtils::ParseXS'=>'2.200401'},
-    'VERSION_FROM' => 'MMA.pm',           # finds $VERSION
+    'NAME'              => 'IPC::MMA',
+    'ABSTRACT_FROM'     => 'MMA.pod',
+    'AUTHOR'            => 'Craig MacKenna <craig@animalhead.com>',
+    'CONFIGURE_REQUIRES'=> {'Config'             =>0,
+                            'Devel::AssertOS'    =>0,
+                            'ExtUtils::MakeMaker'=>'6.52'},
+    'INC'               => $cflags,       # e.g., '-I/usr/include/other'
+    'LIBS'              => [$libs],       # e.g., '-lm'
+    'LICENSE'           => 'perl',
+    'OBJECT'            => 'mma_alloc.o MMA.o',
+    'OPTIMIZE'          => $optOpt,       # '-Os' for release, '-g' for debug
+    'PREREQ_PM'         => {'Carp'             =>0,
+                            'ExtUtils::ParseXS'=>'2.200401',
+                            'Test::More'       =>0,
+                            'Test::Warn'       =>'0.11',
+                            'Time::HiRes'      =>0},
+    'VERSION_FROM'      => 'MMA.pm',      # finds $VERSION
     @moreStuff);

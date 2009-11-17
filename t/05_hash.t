@@ -12,12 +12,12 @@ our %checkHash;
 our $isrand = open (RAND, "</dev/urandom");
 
 sub randStr {
-    my $len = int(rand shift())+1; 
+    my $len = int(rand shift())+1;
     my $ret = '';
     my ($r, $le);
     if ($len) {
         if ($isrand) {sysread (RAND, $ret, $len)}
-        else {  
+        else {
             while (($le = $len - length($ret)) > 0) {
                 $r = pack 'L', int(rand(0xFFFFFFFF));
                 $ret .= $le >= 4 ? $r : substr($r, 0, $le);
@@ -61,7 +61,7 @@ my $MM_HASH_ROOT_SIZE = mm_round_up (2*$PSIZE + $IVSIZE);
 $hash = mm_make_hash ($mm);
 ok (defined $hash && $hash, "make hash");
 
-%checkHash = ();        
+%checkHash = ();
 
 # test 6: memory reqd
 my $avail2 = mm_available ($mm);
@@ -74,25 +74,25 @@ my ($i, $rc, $key, $value, $exists, $dups);
 my ($keyBlockSize, $oldValBlockSize, $newValBlockSize, $decreased);
 my $incFrom = my $incTo = '';
 $expect = $entries = $dups = $decreased = 0;
- 
+
 do {
     $key = randStr(16);
     $value = randStr(256);
-    
+
     is ($exists = mm_hash_exists ($hash, $key), exists $checkHash{$key},
         "key ". shoHex($key) . " (" . ($entries + $dups)
         . ") existance in MMA hash vs. existance in check hash");
-    
+
     $oldValBlockSize = $exists ? mm_round_up (length (mm_hash_fetch($hash, $key))) : 0;
-    $keyBlockSize = mm_round_up ($PSIZE + length($key));    
+    $keyBlockSize = mm_round_up ($PSIZE + length($key));
     $newValBlockSize = mm_round_up (length($value));
-    
-    ok (($rc = mm_hash_store ($hash, $key, $value)) == 1, 
+
+    ok (($rc = mm_hash_store ($hash, $key, $value)) == 1,
         "storing to key " . shoHex($key) . " in hash returned $rc ("
         . ($entries + $dups) . ")");
-        
+
     $checkHash{$key} = $value;
-    
+
     if ($_ = mm_error()) {
         diag "$_ at mm_hash_store (".($entries + $dups)."), key=".shoHex($key).")";
     }
@@ -110,7 +110,7 @@ do {
         # quietly sneak another entry in to keep the number of tests constant
         do {$key = randStr(16)} until (!mm_hash_exists($hash, $key));
         $keyBlockSize = mm_round_up ($PSIZE + length($key));
-        mm_hash_store ($hash, $key, $value); 
+        mm_hash_store ($hash, $key, $value);
         $checkHash{$key} = $value;
     }
     $expect += $keyBlockSize + $newValBlockSize + 2*$ALLOCBASE;
@@ -124,25 +124,25 @@ do {
 my $avail3 = mm_available ($mm);
 my $got = $avail3 - $avail2;
 ok ($got <= -$expect
- && $got >= -$expect - 128,  # subject to random shortages (replaced $decreased) 
+ && $got >= -$expect - 128,  # subject to random shortages (replaced $decreased)
     "effect of stores on avail mem: got $got, expected -$expect, "
   . "decreased $decreased, incFrom $incFrom, incTo $incTo");
-    
+
 # test 136
 my $mmEntries = mm_hash_scalar ($hash);
-is ($mmEntries, $entries, 
+is ($mmEntries, $entries,
     "entries reported by mm_hash_scalar vs. count in this test");
 
 # test 137
-is ($mmEntries, scalar(keys(%checkHash)), 
+is ($mmEntries, scalar(keys(%checkHash)),
     "same number of entries in MMA hash and check hash");
-        
+
 # test 138
 my $prevKey = '';
 $key = mm_hash_first_key ($hash);
 ok (defined($key) && $key, "get first key");
 
-# tests 139-394: read back and check the two hashes against each other, 
+# tests 139-394: read back and check the two hashes against each other,
 #   keys from the MMA hash
 
 my ($value2, $length1, $length2);
@@ -150,29 +150,29 @@ my @keys = ();
 $i = 0;
 do {
     $i++;
-    # check that MMA hash delivers keys in sorted order    
-    ok ($prevKey lt $key, 
+    # check that MMA hash delivers keys in sorted order
+    ok ($prevKey lt $key,
         "'".shoHex($prevKey) . "' should be less than key " . shoHex($key));
-    
+
     $value = mm_hash_fetch($hash, $key);
     $value2 = $checkHash{$key};
     $length1 = defined($value)  ? length($value)  : 0;
     $length2 = defined($value2) ? length($value2) : 0;
-    
+
     ok ($length1, "MMA hash key ".shoHex($key)." exists in / returns value from MMA hash");
     ok ($length2, "MMA hash key ".shoHex($key)." exists in / returns value from check hash");
     if ($length1 && $length2) {
-        ok ($value eq $value2, 
+        ok ($value eq $value2,
             "same value for MMA hash key " . shoHex($key) . " in MMA hash and check hash");
     }
     $prevKey = $key;
     # keep a sorted key array for use in delete
     push @keys, $key;
-    
+
         # it's important to include "defined" in a check for end-of-hash,
-        #  because once in a while the random key maker will make a key composed 
+        #  because once in a while the random key maker will make a key composed
         #  only of ASCII zeroes (0x30), which evaluates as false
-         
+
 } while (defined ($key = mm_hash_next_key ($hash, $key)));
 
 # test 395
@@ -186,11 +186,11 @@ while (($key, $value) = each (%checkHash)) {
     $value2 = mm_hash_fetch($hash, $key);
     $length1 = defined($value)  ? length($value)  : 0;
     $length2 = defined($value2) ? length($value2) : 0;
-    
+
     ok ($length1, "check hash key ".shoHex($key)." exists in / returns value from MMA hash");
     ok ($length2, "check hash key ".shoHex($key)." exists in / returns value from check hash");
     if ($length1 && $length2) {
-        ok ($value eq $value2, 
+        ok ($value eq $value2,
             "same value for check hash key " . shoHex($key) . " in MMA hash and check hash");
 }   }
 
@@ -231,7 +231,7 @@ is ($avail4 - $avail3, $delta4,
 # test 721: store with MM_NO_OVERWRITE
 warning_like {$rc = mm_hash_store ($hash, $keys[22], 1943, MM_NO_OVERWRITE)}
     qr /already exists/, "store with MM_NO_OVERWRITE and existant key should give warning";
-    
+
 # test 722
 ok (!$rc, "store with MM_NO_OVERWRITE and existant key should fail");
 
@@ -248,9 +248,9 @@ ok (!$rc, "store with MM_NO_CREATE and new key should fail");
 mm_hash_clear ($hash);
 my $avail9 = mm_available ($mm);
 
-is ($avail9, $avail2,  
+is ($avail9, $avail2,
     "after mm_hash_clear, avail mem should be what it was after mm_make_hash");
-        
+
 # test 726: free the MM_ARRAY and see that all is back to where we started
 mm_free_hash ($hash);
 my $avail99 = mm_available ($mm);

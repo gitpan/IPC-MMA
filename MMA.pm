@@ -8,7 +8,7 @@ require DynaLoader;
 our @ISA = qw(Exporter DynaLoader);
 
 # set the version for version checking
-our $VERSION = 0.59005;
+our $VERSION = 0.59007;
 
 # nothing is exported into callers namespace by default
 our @EXPORT = qw( );
@@ -117,6 +117,9 @@ sub AUTOLOAD {
                     $function .= '_nowrap';                     # nowrap
                 }
                 my $subname = lc($mmx) . "_${sah}_" . lc($function);
+                ####temp
+                # carp "$subname was called";
+
                 no strict 'refs';
                 
                 # define the symbol so AUTOLOAD won't be called again for this name

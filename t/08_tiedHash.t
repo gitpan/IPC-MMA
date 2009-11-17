@@ -6,12 +6,12 @@ use strict;
 use warnings;
 use Test::More tests => 142;
 
-our ($hash, $entries);
+our ($hash, %tiedHash, $entries);
 our %checkHash;
 our $isrand = open (RAND, "</dev/urandom");
 
 sub randStr {
-    my $len = int(rand shift())+1; 
+    my $len = int(rand shift())+1;
     my $ret = '';
     my ($r, $le);
     if ($len) {
@@ -31,6 +31,12 @@ sub shoHex {
         $ret .= sprintf ("%02X", ord($c));
     }
     return $ret;
+}
+
+# it seems that perl 5.6.2 doesn't call IPC::MMA's scalar function
+sub getScalar {
+    my ($hashRef, $keyArrayRef) = @_;
+    return $^V ge v5.8 ? scalar(%$hashRef) : scalar(@$keyArrayRef);
 }
 
 # test 1 is use_ok
@@ -61,7 +67,7 @@ $hash = mm_make_hash ($mm);
 ok (defined $hash && $hash, "make hash");
 
 # the check hash
-%checkHash = ();        
+%checkHash = ();
 
 # test 6: memory reqd
 my $avail2 = mm_available ($mm);
@@ -70,7 +76,6 @@ is ($avail2 - $memsize, -$expect,
     "effect of making default-alloc hash on avail mem");
 
 # test 7: tie the hash
-my %tiedHash;
 ok (tie (%tiedHash, 'IPC::MMA::Hash', $hash), "tie hash");
 
 # tests 8-71: populate the tied and check hashes
@@ -78,22 +83,22 @@ my ($i, $key, $value, $exists, $dups);
 my ($keyBlockSize, $oldValBlockSize, $newValBlockSize, $decreased);
 my $incFrom = my $incTo = '';
 $expect = $entries = $dups = $decreased = 0;
- 
+
 do {
     $key = randStr(16);
     $value = randStr(256);
-    
+
     is ($exists = exists $tiedHash{$key}, exists $checkHash{$key},
         "key ". shoHex($key) . " (" . ($entries + $dups)
         . ") existance in tied hash vs. existance in check hash");
-    
+
     $oldValBlockSize = $exists ? mm_round_up (length $tiedHash{$key}) : 0;
-    $keyBlockSize = mm_round_up ($PSIZE + length($key));    
+    $keyBlockSize = mm_round_up ($PSIZE + length($key));
     $newValBlockSize = mm_round_up (length($value));
-    
+
     $tiedHash{$key} = $value;
     $checkHash{$key} = $value;
-    
+
     if ($_ = mm_error()) {
         diag "$_ at mm_hash_store (".($entries + $dups)."), key=".shoHex($key).")";
     }
@@ -111,7 +116,7 @@ do {
         # quietly sneak another entry in to keep the number of tests constant
         do {$key = randStr(16)} until (!exists $tiedHash{$key});
         $keyBlockSize = mm_round_up ($PSIZE + length($key));
-        $tiedHash {$key} = $value; 
+        $tiedHash {$key} = $value;
         $checkHash{$key} = $value;
     }
     $expect += $keyBlockSize + $newValBlockSize + 2*$ALLOCBASE;
@@ -125,23 +130,23 @@ do {
 my $avail3 = mm_available ($mm);
 my $got = $avail3 - $avail2;
 ok ($got <= -$expect
- && $got >= -$expect - 128,  # subject to random shortages (replaced $decreased) 
+ && $got >= -$expect - 128,  # subject to random shortages (replaced $decreased)
     "effect of stores on avail mem: got $got, expected -$expect, "
   . "decreased $decreased, incFrom $incFrom, incTo $incTo");
-    
+
 # test 73
-my $mmEntries = scalar (%tiedHash);
-is ($mmEntries, $entries, 
+my @keys = keys (%tiedHash);
+my $mmEntries = getScalar(\%tiedHash, \@keys);
+
+is ($mmEntries, $entries,
     "entries reported by scalar(tied hash) vs. count in this test");
 
 # test 74
-is ($mmEntries, scalar(keys(%checkHash)), 
+is ($mmEntries, scalar(keys(%checkHash)),
     "same number of entries in tied hash and check hash");
 
-# test 75: compare the two hashes against each other, 
+# test 75: compare the two hashes against each other,
 is_deeply (\%tiedHash, \%checkHash, "compare hashes after populating");
-
-my @keys = keys (%tiedHash);
 
 # second-last thing to check is delete
 # test 76
@@ -151,15 +156,16 @@ ok (($delVal = delete ($tiedHash{$delKey})) eq delete($checkHash{$delKey}),
     "delete 2nd-last returns same value as delete same key from check Hash");
 
 # test 77
-is ($mmEntries = scalar(%tiedHash), --$entries,
+@keys = keys(%tiedHash);
+is ($mmEntries = getScalar(\%tiedHash, \@keys), --$entries,
     "hash should contain 1 less entry");
 
 # test 78
 my $avail4 = mm_available ($mm);
 my $delta4 = $ALLOCBASE + mm_round_up ($PSIZE + length($delKey))
-           + (length($delVal) ? $ALLOCBASE + mm_round_up(length $delVal) 
+           + (length($delVal) ? $ALLOCBASE + mm_round_up(length $delVal)
                               : 0);
-           
+
 is ($avail4 - $avail3, $delta4,
     "effect of delete 2nd-last on available memory");
 $expect -= $delta4;
@@ -177,9 +183,9 @@ for ($i = 1; $i < $mmEntries; $i++) {
 %tiedHash = ();
 my $avail9 = mm_available ($mm);
 
-is ($avail9, $avail2,  
+is ($avail9, $avail2,
     "after mm_hash_clear, avail mem should be what it was after mm_make_hash");
-        
+
 # test 142: free the MM_ARRAY and see that all is back to where we started
 mm_free_hash ($hash);
 my $avail99 = mm_available ($mm);

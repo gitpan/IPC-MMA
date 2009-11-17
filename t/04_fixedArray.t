@@ -10,29 +10,50 @@ use IPC::MMA qw(:basic :array);
 our @typeNames = ("MM_ARRAY", "MM_UINT_ARRAY", "MM_INT_ARRAY", "MM_DOUBLE_ARRAY");
 
 # removed $entries 11/5/09
-our ($array, $type, $var_size_bytes, $umax, $cVexp_got);
+our ($array, $type, $option, $var_size_bytes, $cVexp_got);
 our @checkArray;
+our ($ALLOC_SIZE, $ALLOCBASE, $PSIZE, $IVSIZE, $NVSIZE, $DEFENTS);
+our $isrand = open (RAND, "</dev/urandom");
 
-sub typeName {
-    return $type > 0 ? "fixed len $type" : $typeNames[-$type];
+sub randStr {
+    my $len = shift;
+    my $ret = '';
+    my ($r, $le);
+    if ($len) {
+        if ($isrand) {sysread (RAND, $ret, $len)}
+        else {
+            while (($le = $len - length($ret)) > 0) {
+                $r = pack 'L', int(rand(0xFFFFFFFF));
+                $ret .= $le >= 4 ? $r : substr($r, 0, $le);
+    }   }   }
+    return $ret;
 }
 
 sub randVar {
     if ($type == MM_INT_ARRAY) {
-        return int(rand($umax) - ($umax/2));
+        return unpack('i', randStr($IVSIZE));
     } elsif ($type == MM_UINT_ARRAY) {
-        return int(rand $umax);
+        return unpack('I', randStr($IVSIZE));
     } elsif ($type == MM_DOUBLE_ARRAY) {
-        return (rand 1) * 10**(rand(128)-64);
+        return unpack('d', randStr($NVSIZE));
+    } elsif ($option==MM_CSTRING) {
+        # C string mode
+        my $len = int(rand $var_size_bytes+1);
+        my $str = '';
+        while ($len--) {$str .= chr(int(rand 255)+1)}
+        return $str;
     } else {
-        my $ret = '';
-        $_ = $var_size_bytes;
-        while ($_--) {$ret .= chr(int(rand 256))}
-        return $ret;
+        return randStr($var_size_bytes);
 }   }
+
+sub typeName {
+    return ($type > 0) ? (($option==MM_CSTRING) ? "C string <= $type" : "fixed len $type")
+                       : $typeNames[-$type];
+}
 
 sub makeZero {
     if ($type < MM_ARRAY) {return 0}
+    if ($option == MM_CSTRING) {return ''}
     return (chr(0))x$var_size_bytes;
 }
 
@@ -47,8 +68,8 @@ sub checkVal {
     my $form = ($type == MM_DOUBLE_ARRAY) ? 'g'
                                           : ($type < 0) ? 'd'
                                                         : 's';
-    $cVexp_got = $ret ? "" : sprintf(": expected %$form, got %$form",
-                                     $ckval, $val);
+    $cVexp_got = $ret ? "" : sprintf(": expected %$form (len %d), got %$form (len %d)",
+                                     $ckval, length($ckval), $val, length($val));
     return $ret;
 }
 
@@ -77,6 +98,8 @@ sub compArray {
             "$testName: element $i$cVexp_got (type=" . typeName . ")")
 }   }
 
+# diag sprintf("process ID = %d", $$);
+
 # test 1 is use_ok
 BEGIN {use_ok ('IPC::MMA', qw(:basic :array))}
 
@@ -91,7 +114,7 @@ ok (defined $memsize && $memsize,
     "read available mem");
 
 # test 4: get the allocation size
-my ($ALLOC_SIZE, $ALLOCBASE, $PSIZE, $IVSIZE, $NVSIZE, $DEFENTS) = mm_alloc_size();
+($ALLOC_SIZE, $ALLOCBASE, $PSIZE, $IVSIZE, $NVSIZE, $DEFENTS) = mm_alloc_size();
 
 ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
     && $ALLOCBASE && $ALLOCBASE <= 256
@@ -100,15 +123,15 @@ ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
     && $NVSIZE && $NVSIZE <= 16
     && $DEFENTS && $DEFENTS <= 256, "read allocation sizes");
 
-$umax = 256 ** $IVSIZE;
-
 #### cycle thru the array types
-foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
+foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 12, 37) {
 
     #### all test numbers below refer to the first pass through
 
     # test 5: make an array of the current type
-    $array = mm_make_array ($mm, $type);
+    $option = $type > 0 && !($type & 1) ? MM_CSTRING : MM_FIXED_REC;
+
+    $array = mm_make_array ($mm, $type, 64, $option);
     ok (defined $array && $array,
         "make array of $DEFENTS ".typeName);
 
@@ -129,7 +152,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
     my ($i, $rc, $val, $val2);
     my $rand=0;
     for ($i=0; $i < $DEFENTS; $i++) {
-        $rand = randVar;
+        $rand = randVar();
         push @checkArray, $rand;
         ok (($rc = mm_array_store ($array, $i, $rand)) == 1,
             "store " . ($type < 0 ? "$rand " : '')
@@ -176,7 +199,7 @@ foreach $type (MM_INT_ARRAY, MM_UINT_ARRAY, MM_DOUBLE_ARRAY, 1, 2, 37) {
         "array type returned by mm_array_status");
 
     # test 144: array_status: options
-    is ($options, 0,
+    is ($options, $option,
         "options returned by mm_array_status");
 
     # test 145

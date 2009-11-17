@@ -33,12 +33,12 @@ ok ($ALLOC_SIZE && $ALLOC_SIZE <= 256
     && $IVSIZE && $IVSIZE <= 16
     && $NVSIZE && $NVSIZE <= 16
     && $DEFENTS && $DEFENTS <= 256, "read allocation sizes");
-    
+
 # get the version of the mm library
 my $vers = `mm-config --version`;
 
 # show the max and min shared memory size and allocation size
-diag sprintf ("max shared mem size on this platform is %d (0x%X)\n"
+diag sprintf ("max shared mem size on this platform is %d (0x%X),\n"
 . "                         min shared mem size is %d (0x%X), allocation unit is $ALLOC_SIZE bytes,\n"
 . "                         allocation base is $ALLOCBASE bytes, pointer size is $PSIZE bytes,\n"
 . "                         IV size is $IVSIZE bytes, NV size is $NVSIZE bytes, $vers",

@@ -1,9 +1,18 @@
 Revision history for IPC::MMA
 
+0.59007 Nov 17 2009
+      * Modified Makefile.PL to work around some problems with the 
+        'inline' keyword under the Sun C compiler.
+      * Built a Perl 5.6.2 with 64-bit integers and worked thru test 
+        problems using it.
+      * Improved test 04_fixedArray to test option MM_CSTRING as well 
+        as MM_FIXED_REC.
+      * Updated Makefile.PL prerequisites, abstract, author.
+      * Added test for .pod file.
+
 0.59005 Nov 13 2009
-      * Found/fixed a nasty problem involving the undefined result of 
-        a C postincrement operation on a variable that's used elsewhere 
-        in the same statement.
+      * Found/fixed a nasty problem involving list operands of array 
+        push, unshift, splice.
       * Improved UINT value-testing mechanism for perl 5.6.
       * Revised test 4_fixedArray to use proper equality operator (== 
         or eq) based on the type of array (perl 5.6 again)

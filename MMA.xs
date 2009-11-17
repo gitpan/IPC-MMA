@@ -17,8 +17,8 @@ extern "C" {
 #endif
 
 /* if you add more, adjust the starting value so the last one is zero */
-enum mm_array_t { MM_BOOL_ARRAY = -4, MM_DOUBLE_ARRAY, MM_INT_ARRAY, MM_UINT_ARRAY,
-                  MM_ARRAY };
+enum { MM_BOOL_ARRAY = -4, MM_DOUBLE_ARRAY, MM_INT_ARRAY, MM_UINT_ARRAY,
+       MM_ARRAY };
 
 /* option values for arrays (exported) */
 enum mm_array_option_t { MM_FIXED_REC, MM_CSTRING };
@@ -162,7 +162,7 @@ int mm_checkArg (void *arg, enum textType type) {
     return 0;
 }
 
-void mm_err_sv (SV *sv, char *what, enum mm_array_t type) {
+void mm_err_sv (SV *sv, char *what, IV type) {
     char mes[128];
     char *article = what[0] == 'a' ? "an" : "a";
     mes[0]=0;
@@ -171,8 +171,8 @@ void mm_err_sv (SV *sv, char *what, enum mm_array_t type) {
     else if (SvROK(sv))
         sprintf (mes, "a reference is not allowed as %s %s", article, what);
     else if (type >= MM_DOUBLE_ARRAY && type <= MM_UINT_ARRAY)
-        sprintf (mes, 
-          "attempt to store non-numeric or out-of-range value in numeric array %s", 
+        sprintf (mes,
+          "attempt to store non-numeric or out-of-range value in numeric array %s",
           what);
     if (mes[0]) mm_err_set (mes);
 }
@@ -187,43 +187,11 @@ void mm_err_cant_lock(void) {
     mm_err_set ("can't lock the shared memory");
 }
 
-void mm_err_type (enum mm_array_t type) {
+void mm_err_type (IV type) {
     char mes [40];
     sprintf (mes, "bad array type value %d", type);
     mm_err_set (mes);
 }
-
-/* COMMENTED OUT!!
-SV *mm_showSV (SV *sv) {
-    char mes[512];
-    void *ptr;
-    UV stat, *uvptr;
-    STRLEN len;
-
-    if (!SvOK(sv)) {
-        strcpy (mes, ": undef\n");
-    } else {
-        if (looks_like_number(sv)) strcpy (mes, "looks like number");
-        else                       strcpy (mes, "not a number     ");
-        if (SvIOK(sv)) strcat (mes, " SvIOK");
-        if (SvUOK(sv)) strcat (mes, " SvUOK");
-        if (SvNOK(sv)) strcat (mes, " SvNOK");
-        if (SvPOK(sv)) strcat (mes, " SvPOK");
-
-        ptr = SvPV(sv, len);
-        stat = grok_number (ptr, len, uvptr);
-        if (stat & IS_NUMBER_IN_UV) 
-            sprintf (mes + strlen(mes), " NUMBER_IS_IN_UV (%08X)", *uvptr);
-        if (stat & IS_NUMBER_GREATER_THAN_UV_MAX) 
-        strcat (mes, " NUMBER_IS_GREATER_THAN_UV_MAX");
-        if (stat & IS_NUMBER_NOT_INT) strcat (mes, " NUMBER_IS_NOT_INT");
-        if (stat & IS_NUMBER_NEG) strcat (mes, " NUMBER_IS_NEG");
-
-        sprintf (mes + strlen(mes), " len=%d\n", len);
-    }
-    return newSVpv (mes, 0);
-}
-*/
 
 /*--------------------------------- scalars -------------------------------*/
 
@@ -267,7 +235,6 @@ void mm_free_scalar (mm_scalar *scalar, int prelocked) {
 SV *mm_scalar_fetch (mm_scalar *scalar, int prelocked) {
     void *ptr;
     STRLEN thisLen;
-/*    char mes[128]; STRLEN len2;**** TEMP ****/
     SV *sv = &PL_sv_undef;
 
     if (mm_checkArg (scalar, SCALAR) > NOT_SET) {
@@ -279,12 +246,6 @@ SV *mm_scalar_fetch (mm_scalar *scalar, int prelocked) {
             /* return it as a Perl scalar */
             else {
                 sv = newSVpvn (ptr, thisLen = mm_sizeof(scalar->mm, ptr));
-                /**** TEMP ****
-                sprintf (mes, "scalar fetched len=%d, data=", thisLen);
-                memcpy (mes+(len2=strlen(mes)), ptr, thisLen);
-                memset (mes+len2+thisLen, 0, 1);
-                mm_err_set(mes);
-                **** END TEMP ****/
             }
             prelocked || mm_unlock(scalar->mm);
         } else mm_err_cant_lock();
@@ -327,13 +288,6 @@ int mm_scalar_store (mm_scalar *scalar, SV *sv, int prelocked) {
                     scalar->ptr = ptr;
                     /* move the value to the value block */
                     memcpy (ptr, svPtr, svLen);
-                    /**** TEMP ****
-                    sprintf (mes, "scalar stored len=%d, data=", svLen);
-                    thisLen = strlen(mes);
-                    memcpy (mes+thisLen, svPtr, svLen);
-                    memset (mes+thisLen+svLen, 0, 1);
-                    mm_err_set(mes);
-                    **** END TEMP ****/
                     ret = 1;
                 }
                 prelocked || mm_unlock(scalar->mm);
@@ -365,7 +319,7 @@ int mm_scalar_store (mm_scalar *scalar, SV *sv, int prelocked) {
 #define BITNO_TO_BITMASK(bitno) (BIT0>>(bitno&BIT_WITHIN_UV_MASK))
 #define BITNO_TO_RIGHTMASK(bitno) (ALLONES>>(bitno&BIT_WITHIN_UV_MASK))
 
-UV mm_type_size (enum mm_array_t type) {
+UV mm_type_size (IV type) {
     switch (type) {
         case MM_BOOL_ARRAY:
             return 0;
@@ -380,14 +334,14 @@ UV mm_type_size (enum mm_array_t type) {
             return type>>1;
 }   }
 
-size_t mm_bytes_for (enum mm_array_t type, UV entries) {
+size_t mm_bytes_for (IV type, UV entries) {
     if (type == MM_BOOL_ARRAY) return (entries + 7) >> 3;
     return (size_t)(mm_type_size(type) * entries);
 }
 
-size_t mm_alloc_len (enum mm_array_t type, UV entries) {
-    if (!entries) entries = DELTA_ENTRIES;
-    return (mm_round_up (mm_bytes_for (type, entries)));
+size_t mm_alloc_len (IV type, IV entries) {
+    if (entries <= 0) entries = DELTA_ENTRIES;
+    return (mm_round_up (mm_bytes_for (type, (UV)entries)));
 }
 
 /* Front-end for the grok_number routine, called by mm_array_store
@@ -395,7 +349,7 @@ size_t mm_alloc_len (enum mm_array_t type, UV entries) {
     UINT array.  This is adapted from looks_like_number in perl 5.10.1.
     Under earlier perls, grok_number is provided by ppport.h. */
 
-I32 grokN(SV *sv, enum mm_array_t type) {
+I32 mm_grokN(SV *sv, IV type) {
     register const char *sbegin;
     STRLEN len;
     I32 flgs = SvFLAGS(sv);
@@ -413,10 +367,11 @@ I32 grokN(SV *sv, enum mm_array_t type) {
             top half of the UV range in E-notation, thus fouling up
             grok_number */
         if (type == MM_UINT_ARRAY
-         && !(flgs & (SVp_POK|SVf_NOK|SVp_NOK))) {
-            /* only SVf_IOK and/or SVp_IOK */
-            return strchr(sbegin, '-') ? IS_NUMBER_NEG
-                                       : IS_NUMBER_IN_UV;
+         && flgs & (SVf_NOK|SVp_NOK|SVf_IOK|SVp_IOK)) {
+            NV nv = SvNV(sv);
+            return nv < UV_MIN ? IS_NUMBER_NEG
+                               : nv > UV_MAX ? IS_NUMBER_GREATER_THAN_UV_MAX
+                                             : IS_NUMBER_IN_UV;
         }
 #endif
     }
@@ -425,8 +380,7 @@ I32 grokN(SV *sv, enum mm_array_t type) {
 
 /* make an array */
 
-mm_array *mm_make_array (MM *mm, enum mm_array_t type, IV entries, 
-                         UV option, int prelocked) {
+mm_array *mm_make_array (MM *mm, IV type, IV entries, UV option, int prelocked) {
     mm_array *array = NULL;
 
     if (mm_checkMM (mm)) {
@@ -447,7 +401,6 @@ mm_array *mm_make_array (MM *mm, enum mm_array_t type, IV entries,
             } else mm_err_cant_lock();
         } else mm_err_type (type);
     }
-
     return array;
 }
 
@@ -458,12 +411,12 @@ void mm_array_status (mm_array *array, IV *retval, int prelocked) {
     if (mm_checkArg (array, ARRAY)) {
         if (prelocked || mm_lock(array->mm, MM_LOCK_RD)) {
 
-            /* see the mm_array_status routine in the XS section 
+            /* see the mm_array_status routine in the XS section
                 near the end of this file */
             retval[0] = (IV)(array->entries);
             retval[1] = (IV)(array->shiftCount);
             /* type and option as in mm_make_array */
-            retval[2] = array->type > 0 ? array->type>>1 : array->type; 
+            retval[2] = array->type > 0 ? array->type>>1 : array->type;
             retval[3] = array->type > 0 ? array->type & 1 : 0;
             prelocked || mm_unlock(array->mm);
         } else {
@@ -490,14 +443,14 @@ SV *mm_array_fetch (mm_array *array, IV index, int prelocked) {
                     ptr = array->ptr;
                     switch (array->type) {
 
-                        /* Note that we store booleans in an array such that [0] 
-                            is the MSbit of the first UV, thru the LSbit of the 
-                            first UV which is followed by MSbit of the second UV, 
+                        /* Note that we store booleans in an array such that [0]
+                            is the MSbit of the first UV, thru the LSbit of the
+                            first UV which is followed by MSbit of the second UV,
                             etc.
-                           We do this so that boolean arrays are arranged like 
-                            other arrays in UV-sized memory printouts.  Generally 
-                            this means in 32-bit words, but if your Perl is built 
-                            for 64-bit UVs, display boolean arrays by displaying 
+                           We do this so that boolean arrays are arranged like
+                            other arrays in UV-sized memory printouts.  Generally
+                            this means in 32-bit words, but if your Perl is built
+                            for 64-bit UVs, display boolean arrays by displaying
                             64-bit long longs */
 
                         case MM_BOOL_ARRAY:
@@ -601,7 +554,7 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
     STRLEN len, svLen;
     UV mask;
     I32 grokVal;
-    char s[32];
+    char s[64];
     int ret=0;
     int boole=-1;
 
@@ -636,7 +589,7 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
                             } else {
                                 /* new value is a real string
                                     we don't use realloc because it loses memory */
-                                if (valPtr <= ZERO_LEN) 
+                                if (valPtr <= ZERO_LEN)
                                     valPtr = mma_malloc (array->mm, svLen);
                                 else if (!(boole = mma_sizeok(valPtr, svLen))) {
                                     if (newptr = mma_malloc(array->mm, svLen)) {
@@ -648,16 +601,16 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
                                     /* we have an entry to store in! */
                                     *((void **)ptr) = valPtr;
                                     memcpy (valPtr, svPtr, svLen);
-                                    if (index >= array->entries) 
+                                    if (index >= array->entries)
                                         array->entries = index + 1;
                                     ret = 1;
                             }   }
                             break;
 
-                        /* Note that we store booleans in an array such that [0] 
-                            is 0x80 of the lowest byte address, [15] is 0x01 of 
+                        /* Note that we store booleans in an array such that [0]
+                            is 0x80 of the lowest byte address, [15] is 0x01 of
                             the second byte address, etc.
-                           We do this so that boolean arrays are arranged like 
+                           We do this so that boolean arrays are arranged like
                             other arrays in byte-sized memory printouts. */
 
                         case MM_BOOL_ARRAY:
@@ -671,46 +624,46 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
                             break;
 
                         case MM_DOUBLE_ARRAY:
-                            grokVal = grokN(sv, MM_DOUBLE_ARRAY);
+                            grokVal = mm_grokN(sv, MM_DOUBLE_ARRAY);
                             if (grokVal
                              && !(grokVal & (IS_NUMBER_INFINITY | IS_NUMBER_NAN))) {
                                 *((NV *)ptr + index) = SvNV(sv);
                                 if (index >= array->entries) array->entries = index + 1;
                                 ret = 1;
                             } else {
-                                sprintf (s, "(flgs = 0x%X)", grokVal);
+                                sprintf (s, "(grok=0x%X)", grokVal);
                                 mm_err_sv (sv, s, MM_DOUBLE_ARRAY);
                             }
                             break;
 
                         case MM_INT_ARRAY:
-                            grokVal = grokN(sv, MM_INT_ARRAY);
+                            grokVal = mm_grokN(sv, MM_INT_ARRAY);
                             /* following test includes !IS_NUMBER_NOT_INT */
                             if ((grokVal & ~IS_NUMBER_NEG) == IS_NUMBER_IN_UV) {
                                 *((IV *)ptr + index) = SvIV(sv);
                                 if (index >= array->entries) array->entries = index + 1;
                                 ret = 1;
                             } else {
-                                sprintf (s, "(flgs = 0x%X)", grokVal);
+                                sprintf (s, "(grok=0x%X)", grokVal);
                                 mm_err_sv (sv, s, MM_INT_ARRAY);
                             }
                             break;
 
                         case MM_UINT_ARRAY:
-                            grokVal = grokN(sv, MM_UINT_ARRAY);
-                            /* the following tewt includes !IS_NUMBER_NEG */
+                            grokVal = mm_grokN(sv, MM_UINT_ARRAY);
+                            /* the following test includes !IS_NUMBER_NEG */
                             if ((grokVal & ~IS_NUMBER_NOT_INT) == IS_NUMBER_IN_UV) {
                                 *((UV *)ptr + index) = SvUV(sv);
                                 if (index >= array->entries) array->entries = index + 1;
                                 ret = 1;
                             } else {
-                                sprintf (s, "(flgs = 0x%X)", grokVal);
+                                sprintf (s, "(grok=0x%X)", grokVal);
                                 mm_err_sv (sv, s, MM_UINT_ARRAY);
                             }
                             break;
-                        
+
                         /* positive type value is a fixed-length string or record */
-                        default: 
+                        default:
                             svPtr = SvPV (sv, svLen);
                             len = (STRLEN)((array->type) >> 1);
                             ptr += index * len;
@@ -757,7 +710,7 @@ int mm_array_exists (mm_array *array, IV index) {
 
 /* non-boolean array is shrinking, pull remaining entries over the splice (if any) down */
 
-void mm_array_splice_contract (mm_array *array, UV index, UV shift_count, 
+void mm_array_splice_contract (mm_array *array, UV index, UV shift_count,
                                UV size, UV new_entries) {
     char **ptr2, *valPtr;
     UV i;
@@ -771,7 +724,7 @@ void mm_array_splice_contract (mm_array *array, UV index, UV shift_count,
             valPtr = *ptr2++;
             if (valPtr > ZERO_LEN) mma_free (array->mm, valPtr);
     }   }
-    memcpy (ptr, ptr + shift_count*size, 
+    memcpy (ptr, ptr + shift_count*size,
             (array->entries - (index + shift_count))*size);
 
     /* clear the now-unused entries at the end of the array */
@@ -791,7 +744,7 @@ void mm_array_splice_expand (mm_array *array, UV index, UV shift_count, UV size)
 
 /* boolean array is shrinking, pull entries down starting with the index entry */
 
-void mm_array_splice_bool_contract (mm_array *array, UV index, 
+void mm_array_splice_bool_contract (mm_array *array, UV index,
                                     IV shift_count, UV new_entries) {
     UV *src_ad, *dest_ad, *last_dest_ad;
     IV first_shift, second_shift;
@@ -855,7 +808,7 @@ void mm_array_splice_bool_contract (mm_array *array, UV index,
 
 /* boolean array is growing, shift entries upward starting with the highest entries */
 
-void mm_array_splice_bool_expand (mm_array *array, UV index, 
+void mm_array_splice_bool_expand (mm_array *array, UV index,
                                   IV shift_count, UV new_entries) {
     UV *src_ad, *dest_ad, *last_dest_ad;
     IV first_shift, second_shift;
@@ -982,15 +935,15 @@ int mm_array_splice (mm_array *array, IV index, IV del_count,
                     if (shift_count > 0)
                          mm_array_splice_expand  (array, index,
                                                   shift_count, size);
-                    else mm_array_splice_contract(array, index+add_count, 
+                    else mm_array_splice_contract(array, index+add_count,
                                                   -shift_count, size, new_entries);
 
                 } else {
                     /* boolean array */
                     if (shift_count > 0)
-                         mm_array_splice_bool_expand  (array, index,  
+                         mm_array_splice_bool_expand  (array, index,
                                                         shift_count, new_entries);
-                    else mm_array_splice_bool_contract(array, index+add_count, 
+                    else mm_array_splice_bool_contract(array, index+add_count,
                                                        -shift_count, new_entries);
                 }
 
@@ -1061,7 +1014,7 @@ SV *mm_array_delete (mm_array *array, IV index, int prelocked) {
                         *((IV *)ptr + index) = 0;
                         break;
                     /* positive type value is a fixed-length string or record */
-                    default: 
+                    default:
                         len = (STRLEN)((array->type) >> 1);
                         ptr += index * len;
                         memset (ptr, 0, len);
@@ -1119,7 +1072,6 @@ void mm_free_array (mm_array *array, int prelocked) {
 /*------------------------------------- hashes ------------------------------------*/
 
 /* undefs vs. zero-length strings in hashes:
-
     a hash store is not allowed if either the key or value is/are undef
         but either the key or value can be zero-length strings
     a zero-length key is indicated by the key entry containing just the value pointer
@@ -1135,11 +1087,11 @@ mm_hash *mm_make_hash (MM *mm, IV entries, int prelocked) {
 
             /* get a cleared block of memory for header */
             if (hash = mma_calloc (mm, 1, sizeof(mm_hash))) {
-                /* store the pointer to the overall 
+                /* store the pointer to the overall
                    shared memory structure in the hash */
                 hash->mm = mm;
                 /* allocate the pointer table and store pointer to it in the hash */
-                if (!(hash->ptr = mma_calloc (mm, 1, 
+                if (!(hash->ptr = mma_calloc (mm, 1,
                                               mm_round_up(entries*sizeof(void *))))) {
                     mma_free (mm, hash);
                     hash = NULL;
@@ -1154,7 +1106,7 @@ mm_hash *mm_make_hash (MM *mm, IV entries, int prelocked) {
      for internal use only
      callers must validate operands thru SvOK(key) */
 
-mm_hash_entry *mm_hash_find_entry (mm_hash *hash, SV *key, 
+mm_hash_entry *mm_hash_find_entry (mm_hash *hash, SV *key,
                                    mm_hash_entry ***lastPtr) {
     STRLEN keyLen, entryKeyLen, cmpLen;
     UV upper_bound, ix;
@@ -1299,7 +1251,7 @@ int mm_hash_store (mm_hash *hash, SV *key, SV *val, UV flags, int prelocked) {
                                     mmValPtr = NULL;
                                 } else if (!mma_sizeok(mmValPtr, valLen)) {
                                     /* we don't use realloc because it loses memory */
-                                    if (ptr = mma_malloc (hash->mm, valLen)) 
+                                    if (ptr = mma_malloc (hash->mm, valLen))
                                         mma_free (hash->mm, mmValPtr);
                                     mmValPtr = (char *)ptr;
                                 }
@@ -1312,14 +1264,14 @@ int mm_hash_store (mm_hash *hash, SV *key, SV *val, UV flags, int prelocked) {
                         /* new key */
                         if (!(flags & MM_NO_CREATE)) {
                             if (entry = mma_calloc(hash->mm, 1, keyLen + sizeof(void *))) {
-                                /* allocate the value block if the value 
+                                /* allocate the value block if the value
                                    is not a zero-length string */
                                 if (valLen && !(mmValPtr = mma_malloc (hash->mm, valLen))) {
                                     mma_free (hash->mm, entry);
                                 } else {
                                     /* either we don't need an mmValPtr, or we have one */
                                     ptr = hash->ptr;
-                                    if ((moveLen = mm_sizeof(hash->mm, ptr)) 
+                                    if ((moveLen = mm_sizeof(hash->mm, ptr))
                                   /* the = is the important detail */
                                         <= hash->entries * sizeof (void *)) {
 
@@ -1334,7 +1286,7 @@ int mm_hash_store (mm_hash *hash, SV *key, SV *val, UV flags, int prelocked) {
 
                                         /* grow the pointer array
                                             we don't use realloc 'cause it loses memory */
-                                        if (ptr = mma_calloc (hash->mm, (size_t)new_entries, 
+                                        if (ptr = mma_calloc (hash->mm, (size_t)new_entries,
                                                               sizeof(void *))) {
                                             memcpy (ptr, hash->ptr, moveLen);
                                             mma_free (hash->mm, hash->ptr);
@@ -1343,7 +1295,7 @@ int mm_hash_store (mm_hash *hash, SV *key, SV *val, UV flags, int prelocked) {
                                     }   }
                                     if (ptr) {
 
-                                        /* shift the entries whose keys are greater than this 
+                                        /* shift the entries whose keys are greater than this
                                             new key, to the right in the pointer array */
                                         moveLen = (char *)(ptr + hash->entries++) - (char *)lastPtr;
                                         if (moveLen)
@@ -1395,7 +1347,7 @@ SV* mm_hash_delete (mm_hash *hash, SV *key, int prelocked) {
                 if (entry = mm_hash_find_entry (hash, key, &ptr)) {
 
                     /* if the entry has a value, return it */
-                    if (entry->valPtr) sv = newSVpv (entry->valPtr, 
+                    if (entry->valPtr) sv = newSVpv (entry->valPtr,
                                                      mm_sizeof (hash->mm, entry->valPtr));
                     else sv = &PL_sv_no;
 
@@ -1768,7 +1720,7 @@ mm_array_splice (array, offset, length, ...)
         mm_array_splice_nowrap=2
         mma_array_splice_nowrap=3
     PREINIT:
-        IV index = SvOK(offset) ? SvIV(offset) < 0 && !(ix & 2) ? SvIV(offset) 
+        IV index = SvOK(offset) ? SvIV(offset) < 0 && !(ix & 2) ? SvIV(offset)
                                                                   + array->entries
                                                                 : SvIV(offset)
                                 : 0;
