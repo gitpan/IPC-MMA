@@ -7,6 +7,18 @@ use warnings;
 use Test::More tests => 11;
 use Time::HiRes qw(usleep);
 
+use constant FINAL_TO => 1000000;
+
+my $var;    # the shared variable
+
+# for child processes in test 11 to insist on their error code
+sub err {
+    my $errval = shift;
+    while (1) {
+        $var = $errval;
+        usleep 100;   
+}   }
+
 # test 1 is use_ok
 BEGIN {use_ok ('IPC::MMA', qw(:basic :scalar))}
 
@@ -21,7 +33,8 @@ if (!defined $scalar || !$scalar) {BAIL_OUT "can't create shared scalar"}
 ok (1, "make scalar");
 
 # test 4, tie it and initialize it
-my $var;
+#  because this says 'MMA', tied operations do not themselves lock
+ 
 if (!tie ($var, 'IPC::MMA::Scalar', $scalar)) {BAIL_OUT "Can't tie scalar"}
 ok (1, "tie scalar");
 $var = '00';
@@ -29,7 +42,8 @@ $var = '00';
 my ($id, $timer);
 my @pid = ($$, $$, $$, $$);
 
-# test 5: fork into 4 processes and make a process number $id 0 to 3
+# test 5: fork into 4 processes in parent, $id = 0, child pids in $pid[1:3]
+#                             in children, $id = 1:3
 if (!defined ($pid[1] = fork)) {BAIL_OUT("can't fork into 2 processes")}
 if ($pid[1]) {
     ok (1, "fork into 2 processes");
@@ -113,70 +127,84 @@ if ($id==1) {
     #  it sets var to 19 then requests
     #  an upgrade of its RD lock to RW
     while ($var < 18) {usleep 100}
-    $var = 19;
-    if (!mm_lock ($mm, MM_LOCK_RW)) {
-        $var = 97;
-        exit;
-    }
-    # when 1 gets its write lock, 3 has gotten its read lock and then
-    #  released it, but there's the theoretical possibility that 3 is
-    #  still waiting for its read lock
-    while ($var < 22) {usleep 100}
-    usleep 2000; # time for 3 to set 23 after unlock
-    if ($var == 22) {
-        $var = mm_unlock($mm) ? 24 : 91;
-    } elsif ($var == 23) {
-        $var = mm_unlock($mm) ? 26 : 91;
-    }
+    if ($var == 18) {
+        $var = 19;
+        if (!mm_lock ($mm, MM_LOCK_RW)) {err 97}
+        # when 1 gets its write lock, 3 has gotten its read lock and then
+        #  released it, but there's the theoretical possibility that 3 is
+        #  still waiting for its read lock
+        while ($var < 22) {usleep 100}
+        if ($var == 22) {
+            $var = 24;
+            if(!mm_unlock($mm)) {err 91}
+        } elsif ($var == 23) {
+            $var = 26;
+            if(!mm_unlock($mm)) {err 91}
+    }   }
 
+} elsif ($id==2) {
+    # process 2: when it sees 21 it releases its read lock and
+    # advances to 22
+    while ($var < 21) {usleep 100}
+    if ($var == 21) {
+        $var = 22;
+        if (!mm_unlock($mm)) {err 92}
+    }
+    
 } elsif ($id==3) {
     # a short while after process 3 (which has no lock at all) sees 19,
     #  sets 20 and requests a read lock (1 will have gotten its write
     #  lock by then)
     while ($var < 19) {usleep 100}
-    usleep 2000;  # make sure #1 has requested its lock and is waiting
-    $var = 20;
-    if (!mm_lock($mm, MM_LOCK_RD)) {
-        $var = 98;
-        exit;
-    }
-    # when 3 gets its read lock, 1 is still waiting for its write lock,
-    #   though there's the theoretical possibility that 1 has gotten
-    #   its write lock and then released it
-    while ($var < 22) {usleep 100}
-    usleep 2000; # time for 1 to set 24 after unlock
-    if ($var == 22) {
+    if ($var == 19) {
+        usleep 10000;  # make sure #1 has requested its lock and is waiting
+        $var = 20;
+        if (!mm_lock($mm, MM_LOCK_RD)) {err 98}
+        # when 3 gets its read lock, 1 is still waiting for its write lock,
+        #   though there's the theoretical possibility that 1 has gotten
+        #   its write lock and then released it
+        while ($var < 22) {usleep 100}
+        if ($var == 22) {
+            $var = 23;
+            if (!mm_unlock($mm)) {err 93}
+        } elsif ($var == 24) {
+            $var = 25;
+            if (!mm_unlock($mm)) {err 93}
+    }   }
 
-        ##########################
-        # the bug in this test, on some CPAN testers' systems, seems
-        #   to have been that the following unlock releases process 1,
-        #   which runs, sets 24 and then terminates, before control
-        #   returns here to drop the 23 on top of the 24.
-        #   The overall result is that test 11 hangs at $var==23.
-        # OUR HOPEFUL FIX IS TO INCREASE THE USLEEP IN PROCESS 1 FROM
-        #   200 to 2000.  Our usleep above is similarly increased, for
-        #   the theoretically-possible opposite result.
-        ##########################
-        $var = mm_unlock($mm) ? 23 : 93;
-    } elsif ($var == 24) {
-        $var = mm_unlock($mm) ? 25 : 93;
-    }
-
-} elsif (!$id) {
+} else {
     # when process 0 sees 20, it releases its read lock and
     #  advances to 21
     # then it continues to wait until a timeout, or it sees one of
     #  the terminating values
     $var = 18;
     my $t20 = 0;
-    while ($var < 25 && $timer < 100000) {
+    while ($var < 25 && $timer < FINAL_TO) {
         if ($var == 20) {
             if (($t20 ||= $timer+1)
-             && $timer >= $t20 + 200) {$var = mm_unlock($mm) ? 21 : 90}
-        }
-        $timer += 100;
-        usleep 100;
+             && $timer >= $t20 + 200) {
+                $var = 21;
+                if (!mm_unlock($mm)) {
+                    $var = 90;
+                    usleep 100000;  # let other activity settle
+                    $var = 90;
+                    last;
+        }   }   }
+        # the while and if comparisons above take a significant number of uS
+        #  so if FINAL_TO is to approximate real time, this delay has to be mS
+        $timer += 4000;
+        usleep 4000;
     }
+    # if timeout, test for other processes still around
+    my $st='';
+    if ($timer >= FINAL_TO
+     && $var < 90) {
+        for (my $i=1; $i<=3; $i++) {
+            if (kill 0, $pid[$i]) {
+                $st .= $st ? ", $i" : $i;
+    }   }   }
+
+    # create final result message
     my $mes = $var==97 ? "id 1 couldn't upgrade read to write lock"
             : $var==98 ? "id 3 couldn't get read lock"
             : $var>=90 ? "id ".($var-90)." couldn't unlock"
@@ -184,21 +212,15 @@ if ($id==1) {
             : "id 1 write lock "
             . ($var == 25 ? "was granted before a later id 3 read lock"
                           : "had to wait for a later id 3 read lock");
-    # report the test result (2 results are OK)
-    ok ($var == 25 || $var == 26, $mes);
 
-} else {
-    # process 2: when it sees 21 it releases its read lock and
-    # advances to 22
-    while ($var < 21) {usleep 100}
-    $var = mm_unlock($mm) ? 22 : 92;
+    # report the test result (2 results are OK)
+    ok ($var == 25 || $var == 26, "$mes: " . ($st ? "process $st still alive" 
+                                                  : "timer=$timer of ".FINAL_TO));
+
+    kill 9, $pid[1], $pid[2], $pid[3];
+    mm_destroy ($mm);
 }
 # success on test 11 means that a process can upgrade a read lock
 #   to a write lock without first releasing the read lock
 #   but online words say this upgrade is subject to an interloper
-
-# not a test: knock off the other processes and destroy the shared memory
-if (!$id) {
-    kill 9, $pid[1], $pid[2], $pid[3];
-    mm_destroy ($mm);
-}
+#   (which is indicated by a 'had to wait for a later' message)

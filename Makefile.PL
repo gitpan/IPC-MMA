@@ -31,19 +31,27 @@ if (system "which $binpath>/dev/null") {
 my $cflags = `$binpath --cflags`;
 my $libs   = `$binpath --ldflags --libs`;
 chomp ($cflags, $libs);
+my @optional = ();
+my $errwarn = qr/(^|\b)(warning|error)(\b|$)/im;
 
 # test cc optimize by size (OK in gcc, possibly others)
-my $optOpt = '-Os';
-if (system($Config{'cc'}, '-c', $optOpt, 'test.c')) {$optOpt = '-O2'}
+#   make this ('-g') for debugging 
+for my $opt ('-Os', '-O2', $Config{'optimize'}) {
+    if (!$opt) {last}
+    $_ = `$Config{'cc'} -c $opt test.c 2>&1`;
+    if (!/$errwarn/) {
+        @optional = ('OPTIMIZE' => $opt);
+        last;
+}   }
 
 # see if cc can handle 'inline' keyword
 $_ = `$Config{'cc'} -c test_inline.c 2>&1`;
-my @moreStuff = /\b(warning|error)\b/i ? ("DEFINE" => "-D'inline=/* Inline */'")
-                                       : ();
+if (/$errwarn/) {
+    push (@optional, "DEFINE" => "-Dinline='/* Inline */'");
+}
 unlink('test.o', 'test_inline.o');
 
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+# see perldoc ExtUtils::MakeMaker for details of WriteMakefile options
 
 WriteMakefile(
     'NAME'              => 'IPC::MMA',
@@ -56,11 +64,10 @@ WriteMakefile(
     'LIBS'              => [$libs],       # e.g., '-lm'
     'LICENSE'           => 'perl',
     'OBJECT'            => 'mma_alloc.o MMA.o',
-    'OPTIMIZE'          => $optOpt,       # '-Os' for release, '-g' for debug
     'PREREQ_PM'         => {'Carp'             =>0,
                             'ExtUtils::ParseXS'=>'2.200401',
                             'Test::More'       =>0,
                             'Test::Warn'       =>'0.11',
                             'Time::HiRes'      =>0},
     'VERSION_FROM'      => 'MMA.pm',      # finds $VERSION
-    @moreStuff);
+    @optional);

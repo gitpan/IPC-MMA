@@ -625,14 +625,12 @@ int mm_array_store (mm_array *array, IV index, SV *sv, int prelocked) {
 
                         case MM_DOUBLE_ARRAY:
                             grokVal = mm_grokN(sv, MM_DOUBLE_ARRAY);
-                            if (grokVal
-                             && !(grokVal & (IS_NUMBER_INFINITY | IS_NUMBER_NAN))) {
+                            if (grokVal) {
                                 *((NV *)ptr + index) = SvNV(sv);
                                 if (index >= array->entries) array->entries = index + 1;
                                 ret = 1;
                             } else {
-                                sprintf (s, "(grok=0x%X)", grokVal);
-                                mm_err_sv (sv, s, MM_DOUBLE_ARRAY);
+                                mm_err_sv (sv, "", MM_DOUBLE_ARRAY);
                             }
                             break;
 

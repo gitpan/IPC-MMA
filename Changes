@@ -1,5 +1,15 @@
 Revision history for IPC::MMA
 
+0.59009 Nov 19 2009
+      * Reworked test 09_lock.t to try to eliminate a FAIL on a CPAN 
+        tester's slow system.  This is probably the hardest program 
+        to get right in the author's experience.
+      * Reworked optimization selection in Makefile.PL to be more 
+        compatible with various toolsets.
+      * Eliminated error messages when NaN or inf values are stored 
+        in DOUBLE_ARRAYs.  Random number generation in test 
+        04_fixedArray.t will occasionally produce NaNs and infs.
+
 0.59007 Nov 17 2009
       * Modified Makefile.PL to work around some problems with the 
         'inline' keyword under the Sun C compiler.
