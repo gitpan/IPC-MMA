@@ -31,6 +31,7 @@ if (system "which $binpath>/dev/null") {
 my $cflags = `$binpath --cflags`;
 my $libs   = `$binpath --ldflags --libs`;
 chomp ($cflags, $libs);
+
 my @optional = ();
 my $errwarn = qr/(^|\b)(warning|error)(\b|$)/im;
 

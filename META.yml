@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               IPC-MMA
-version:            0.59009
+version:            0.6
 abstract:           Shared Memory using Ralf Engelschall's mm library
 author:
     - Craig MacKenna <craig@animalhead.com>

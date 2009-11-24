@@ -7,16 +7,17 @@ use warnings;
 use Test::More tests => 11;
 use Time::HiRes qw(usleep);
 
-use constant FINAL_TO => 1000000;
+use constant TIMEOUT => 1000000;
+use constant DELTA_T =>    4000;
 
-my $var;    # the shared variable
+my ($var, $myvar);    # the shared variable, local copy
 
 # for child processes in test 11 to insist on their error code
 sub err {
     my $errval = shift;
     while (1) {
         $var = $errval;
-        usleep 100;   
+        usleep(int(DELTA_T/5));
 }   }
 
 # test 1 is use_ok
@@ -39,7 +40,7 @@ if (!tie ($var, 'IPC::MMA::Scalar', $scalar)) {BAIL_OUT "Can't tie scalar"}
 ok (1, "tie scalar");
 $var = '00';
 
-my ($id, $timer);
+my ($id, $timer, $w84);
 my @pid = ($$, $$, $$, $$);
 
 # test 5: fork into 4 processes in parent, $id = 0, child pids in $pid[1:3]
@@ -64,80 +65,82 @@ if ($pid[1]) {
 if (!$id) {
     $var = mm_lock($mm, MM_LOCK_RD) ? '02' : '01';
     $timer = 0;
-    while ($var < 5 && $timer < 100000) {
-        $timer += 100;
-        usleep 100;
+    while (($myvar = $var) < 5 && $timer < TIMEOUT) {
+        $timer += DELTA_T;
+        usleep(DELTA_T);
     }
-    cmp_ok ($var, '==', 5, "id 0 read lock");
+    cmp_ok ($myvar, '==', 5, "id 0 read lock");
     $var = '05';
 } else {
-    while ($var < $id + 1) {usleep 100}
-    $var = sprintf ("%02d", $id + 2);
-    while ($var < 5) {usleep 100}
+    $w84 = $id+1;
+    while (($myvar = $var) < $w84) {usleep(DELTA_T)}
+    if ($myvar == $w84) {$var = sprintf ("%02d", $w84+1)}
+    while ($var < 5) {usleep(DELTA_T)}
 }
 
 # test 9: process 1 sets a RD lock, sets var 7 or 8, others acknowledge 8 by setting 9, 10, 11
 if ($id==1) {
-    while ($var < 6) {usleep 100}
-    $var = mm_lock($mm, MM_LOCK_RD) ? '08' : '07';
-    while ($var < 11) {usleep 100}
+    while (($myvar = $var) < 6) {usleep(DELTA_T)}
+    if ($myvar == 6) {$var = mm_lock($mm, MM_LOCK_RD) ? '08' : '07'}
+    while ($var < 11) {usleep(DELTA_T)}
 } elsif (!$id) {
     $var = '06';
     $timer = 0;
-    while ($var < 11 && $timer < 100000) {
-        if ($var == 8) {$var = '09'}
-        $timer += 100;
-        usleep 100;
+    while (($myvar = $var) < 11 && $timer < TIMEOUT) {
+        if ($myvar == 8) {$var = '09'}
+        $timer += DELTA_T;
+        usleep(DELTA_T);
     }
-    is ($var, 11, "id 1 read lock");
+    is ($myvar, 11, "id 1 read lock");
     $var = 11;
 } else {
-    while ($var < ($id+7)) {usleep 100}
-    $var = $id == 2 ? 10 : 11;
-    while ($var < 11) {usleep 100}
+    $w84 = $id+7;
+    while (($myvar = $var) < $w84) {usleep(DELTA_T)}
+    if ($myvar == $w84) {$var = $w84+1}
+    while ($var < 11) {usleep(DELTA_T)}
 }
 
 # test 10: process 2 sets a RD lock, sets var 13-14, others ack 14 by setting 15, 16, 17
 if ($id == 2) {
-    while ($var < 12) {usleep 100}
-    $var = mm_lock($mm, MM_LOCK_RD) ? 14 : 13;
-    while ($var < 17) {usleep 100}
+    while (($myvar = $var) < 12) {usleep(DELTA_T)}
+    if ($myvar == 12) {$var = mm_lock($mm, MM_LOCK_RD) ? 14 : 13}
+    while ($var < 17) {usleep(DELTA_T)}
 } elsif (!$id) {
     $var = 12;
     $timer = 0;
-    while ($var < 17 && $timer < 100000) {
-        if ($var == 14) {$var = 15}
-        $timer += 100;
-        usleep 100;
+    while (($myvar = $var) < 17 && $timer < TIMEOUT) {
+        if ($myvar == 14) {$var = 15}
+        $timer += DELTA_T;
+        usleep(DELTA_T);
     }
-    is ($var, 17, "id 2 read lock");
+    is ($myvar, 17, "id 2 read lock");
     $var = 17;
 } else {
-    while ($var < ($id==1 ? 15 : 16)) {usleep 100}
-    $var = $id == 1 ? 16 : 17;
-    while ($var < 17) {usleep 100}
+    $w84 = $id==1 ? 15 : 16;
+    while (($myvar = $var) < $w84) {usleep(DELTA_T)}
+    if ($myvar == $w84) {$var = $w84+1}
+    while ($var < 17) {usleep(DELTA_T)}
 }
 
 # test 11: upgrading a RD lock to RW
 # at the start, processes 0, 1, 2 have read locks
-$timer = 0;
 
 if ($id==1) {
     # when process 1 sees process 0 set var to 18,
     #  it sets var to 19 then requests
     #  an upgrade of its RD lock to RW
-    while ($var < 18) {usleep 100}
-    if ($var == 18) {
+    while (($myvar = $var) < 18) {usleep(DELTA_T)}
+    if ($myvar == 18) {
         $var = 19;
         if (!mm_lock ($mm, MM_LOCK_RW)) {err 97}
         # when 1 gets its write lock, 3 has gotten its read lock and then
         #  released it, but there's the theoretical possibility that 3 is
         #  still waiting for its read lock
-        while ($var < 22) {usleep 100}
-        if ($var == 22) {
+        while (($myvar = $var) < 22) {usleep(DELTA_T)}
+        if ($myvar == 22) {
             $var = 24;
             if(!mm_unlock($mm)) {err 91}
-        } elsif ($var == 23) {
+        } elsif ($myvar == 23) {
             $var = 26;
             if(!mm_unlock($mm)) {err 91}
     }   }
@@ -145,29 +148,28 @@ if ($id==1) {
 } elsif ($id==2) {
     # process 2: when it sees 21 it releases its read lock and
     # advances to 22
-    while ($var < 21) {usleep 100}
-    if ($var == 21) {
-        $var = 22;
-        if (!mm_unlock($mm)) {err 92}
+    while (($myvar = $var) < 21) {usleep(DELTA_T)}
+    if ($myvar == 21) {
+        $var = mm_unlock($mm) ? 22 : 92;
     }
     
 } elsif ($id==3) {
     # a short while after process 3 (which has no lock at all) sees 19,
     #  sets 20 and requests a read lock (1 will have gotten its write
     #  lock by then)
-    while ($var < 19) {usleep 100}
-    if ($var == 19) {
-        usleep 10000;  # make sure #1 has requested its lock and is waiting
+    while (($myvar = $var) < 19) {usleep(DELTA_T)}
+    if ($myvar == 19) {
+        usleep(DELTA_T<<2);  # make sure #1 has requested its lock and is waiting
         $var = 20;
         if (!mm_lock($mm, MM_LOCK_RD)) {err 98}
         # when 3 gets its read lock, 1 is still waiting for its write lock,
         #   though there's the theoretical possibility that 1 has gotten
         #   its write lock and then released it
-        while ($var < 22) {usleep 100}
-        if ($var == 22) {
+        while (($myvar = $var) < 22) {usleep(DELTA_T)}
+        if ($myvar == 22) {
             $var = 23;
             if (!mm_unlock($mm)) {err 93}
-        } elsif ($var == 24) {
+        } elsif ($myvar == 24) {
             $var = 25;
             if (!mm_unlock($mm)) {err 93}
     }   }
@@ -178,44 +180,42 @@ if ($id==1) {
     # then it continues to wait until a timeout, or it sees one of
     #  the terminating values
     $var = 18;
-    my $t20 = 0;
-    while ($var < 25 && $timer < FINAL_TO) {
-        if ($var == 20) {
-            if (($t20 ||= $timer+1)
-             && $timer >= $t20 + 200) {
-                $var = 21;
-                if (!mm_unlock($mm)) {
-                    $var = 90;
-                    usleep 100000;  # let other activity settle
-                    $var = 90;
-                    last;
-        }   }   }
+    $timer = 0;
+    while (($myvar = $var) < 25 && $timer < TIMEOUT) {
+        if ($myvar == 20) {
+            if (mm_unlock($mm)) {$var = 21}
+            else {
+                $var = 90;
+                usleep(DELTA_T<<4);  # let other activity settle
+                $var = $myvar = 90;
+                last;
+        }   }
         # the while and if comparisons above take a significant number of uS
-        #  so if FINAL_TO is to approximate real time, this delay has to be mS
-        $timer += 4000;
-        usleep 4000;
+        #  so if TIMEOUT is to approximate real time, this delay has to be mS
+        $timer += DELTA_T;
+        usleep(DELTA_T);
     }
     # if timeout, test for other processes still around
     my $st='';
-    if ($timer >= FINAL_TO
-     && $var < 90) {
+    if ($timer >= TIMEOUT
+     && $myvar < 90) {
         for (my $i=1; $i<=3; $i++) {
             if (kill 0, $pid[$i]) {
                 $st .= $st ? ", $i" : $i;
     }   }   }
 
     # create final result message
-    my $mes = $var==97 ? "id 1 couldn't upgrade read to write lock"
-            : $var==98 ? "id 3 couldn't get read lock"
-            : $var>=90 ? "id ".($var-90)." couldn't unlock"
-            : $var< 25 ? "state got stuck at $var"
+    my $mes = $myvar==97 ? "id 1 couldn't upgrade read to write lock"
+            : $myvar==98 ? "id 3 couldn't get read lock"
+            : $myvar>=90 ? "id ".($myvar-90)." couldn't unlock"
+            : $myvar< 25 ? "state got stuck at $myvar"
             : "id 1 write lock "
-            . ($var == 25 ? "was granted before a later id 3 read lock"
-                          : "had to wait for a later id 3 read lock");
+            . ($myvar == 25 ? "was granted before a later id 3 read lock"
+                            : "had to wait for a later id 3 read lock");
 
     # report the test result (2 results are OK)
-    ok ($var == 25 || $var == 26, "$mes: " . ($st ? "process $st still alive" 
-                                                  : "timer=$timer of ".FINAL_TO));
+    ok ($myvar == 25 || $myvar == 26, "$mes: " . ($st ? "process $st still alive" 
+                                                      : "timer=$timer of ".TIMEOUT));
 
     kill 9, $pid[1], $pid[2], $pid[3];
     mm_destroy ($mm);

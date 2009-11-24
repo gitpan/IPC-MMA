@@ -30,18 +30,21 @@ sub randStr {
 }
 
 sub randVar {
+    my ($x, $len);
     if ($type == MM_INT_ARRAY) {
         return unpack('i', randStr($IVSIZE));
     } elsif ($type == MM_UINT_ARRAY) {
         return unpack('I', randStr($IVSIZE));
     } elsif ($type == MM_DOUBLE_ARRAY) {
-        return unpack('d', randStr($NVSIZE));
+        # eliminate NaN's that random number generation will yield
+        do {$x = unpack('d', randStr($NVSIZE))} until ($x == $x);
+        return $x;
     } elsif ($option==MM_CSTRING) {
         # C string mode
-        my $len = int(rand $var_size_bytes+1);
-        my $str = '';
-        while ($len--) {$str .= chr(int(rand 255)+1)}
-        return $str;
+        $len = int(rand $var_size_bytes+1);
+        $x = '';
+        while ($len--) {$x .= chr(int(rand 255)+1)} # no NULs
+        return $x;
     } else {
         return randStr($var_size_bytes);
 }   }
