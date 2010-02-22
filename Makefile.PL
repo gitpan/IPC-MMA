@@ -23,8 +23,8 @@ if (system "which $binpath>/dev/null") {
         $binpath =~ s"(.)(/(mm-config)?)?$"$1/mm-config";
 
         if (!$binpath || !-e $binpath || !-X $binpath) {
-            if ($binpath) {warn "'$binpath' not found or not executable\n"}
-            warn "The mm library is available at http://www.ossp.org/pkg/lib/mm/\n";
+            if ($binpath) {warn "'${binpath}' not found or not executable\n"}
+            warn "The mm library is available at http://www.ossp.org/pkg/lib/mm/";
             exit 0;
 }   }   }
 # mm-config provides parameters to link with the mm library
@@ -32,22 +32,37 @@ my $cflags = `$binpath --cflags`;
 my $libs   = `$binpath --ldflags --libs`;
 chomp ($cflags, $libs);
 
+# check further
+if ($cflags !~ /-I(.+)/) {
+    warn "Your system includes a file named 'mm-config', but it doesn't\n"
+       . " act like the utility that's installed with the mm library.\n"
+       . "Please install the mm library from http://www.ossp.org/pkg/lib/mm/";
+    exit 0;
+}
+if (!-e "$1/mm.h") {
+    warn "The file 'mm.h' is not in directory '${1}', as it should be from "
+       . " the installation of the mm library.\n"
+       . "Please install the mm library from http://www.ossp.org/pkg/lib/mm/";
+    exit 0;
+}
 my @optional = ();
-my $errwarn = qr/(^|\b)(warning|error)(\b|$)/im;
+
+my $cc = $Config{'cc'};
+$cc =~ s/\s+-.+$//; #remove possible trailing options
+my @ccs = split /\s+/, $cc;
 
 # test cc optimize by size (OK in gcc, possibly others)
 #   make this ('-g') for debugging 
 for my $opt ('-Os', '-O2', $Config{'optimize'}) {
     if (!$opt) {last}
-    $_ = `$Config{'cc'} -c $opt test.c 2>&1`;
-    if (!/$errwarn/) {
+    if (!(system(@ccs, '-c', $opt, 'test.c') >> 8)) {
         @optional = ('OPTIMIZE' => $opt);
         last;
 }   }
 
 # see if cc can handle 'inline' keyword
-$_ = `$Config{'cc'} -c test_inline.c 2>&1`;
-if (/$errwarn/) {
+if (system(@ccs, '-c', 'test_inline.c') >> 8) {
+    # no: turn 'inline's into comments
     push (@optional, "DEFINE" => "-Dinline='/* Inline */'");
 }
 unlink('test.o', 'test_inline.o');

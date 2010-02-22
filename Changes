@@ -1,6 +1,15 @@
 Revision history for IPC::MMA
 
-0.6     Nov 23 2009
+0.7   Feb 21 2010
+      * Improved Makefile.PL to check more deeply for the presence 
+        and completeness of the mm library, to work around an Unknown 
+        test result on one CPAN tester's system.
+      * Improved C compiler testing in Makefile.PL to deal with 
+        compound names like 'ccache cc'. 
+      * Corrected two method names in .pod docs from 'mm[a]_hash_' to 
+        'mm[a]_array_'.
+
+0.6   Nov 23 2009
       * Added NaN filter to random DOUBLE generation in 04_fixedArray.t.
       * Improved reliability/consistency of 09_lock.t operation by 
         ** reworking delays/timeouts for slow/heavily-loaded systems,

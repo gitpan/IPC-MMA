@@ -68,8 +68,8 @@ and I<next> operations.
 
 An IPC::MMA array can store data in any of six ways, including
 general-purpose scalars, signed or unsigned integers, floating-point
-numbers / large integers, fixed-length strings/records, and booleans
-at one bit per array element.
+numbers, fixed-length strings/records, and booleans at one bit per
+array element.
 
 =head2 Locking, Mutual Exclusion
 
@@ -364,14 +364,14 @@ Tied storing just produces a warning message in these cases.
 =item B<Pushing into an Array>
 
  DIRECT CALL                           TIED EQUIVALENT
- $entries=mm_hash_push ($array,list);  $entries=push @tiedHash,list;
- $entries=mma_hash_push($array,list);  $entries=push @lockTiedHash,list;
+ $entries=mm_array_push ($array,list); $entries=push @tiedArray,list;
+ $entries=mma_array_push($array,list); $entries=push @lockTiedArray,list;
 
 These add the values in I<list> at the end of the array.  Because of
 the way Perl handles arrays in subroutine and function calls, you can
 write:
 
- mm_hash_push($array, @srcArray);      push @tiedArray, @srcArray;
+ mm_array_push($array, @srcArray);     push @tiedArray, @srcArray;
 
 An error message will occur for any undefined values or references
 in I<list>, and such values will not be added to the array.  The
@@ -380,8 +380,8 @@ return value is the new size of the array.
 =item B<Unshifting into an Array>
 
  DIRECT CALL                              TIED EQUIVALENT
- $entries=mm_hash_unshift ($array,list);  $entries=unshift @tiedHash,list;
- $entries=mma_hash_unshift($array,list);  $entries=unshift @lockTiedHash,list;
+ $entries=mm_array_unshift ($array,list); $entries=unshift @tiedArray,list;
+ $entries=mma_array_unshift($array,list); $entries=unshift @lockTiedArray,list;
 
 These add the values in I<list> at the start of the array.  The values
 in I<list> are stored in the same order in the array.  Any elements
@@ -391,7 +391,7 @@ indices.
 Because of the way Perl handles arrays in subroutine and function
 calls, you can write:
 
- mm_hash_unshift($array, @srcArray);      unshift @tiedArray, @srcArray;
+ mm_array_unshift($array, @srcArray);     unshift @tiedArray, @srcArray;
 
 An error message will occur for any undefined values or references
 in I<list>, and such values will not be added to the array.  The
@@ -1123,7 +1123,7 @@ This module is free software; you may redistribute it and/or
 modify it under the same terms as Perl 5.10.1.  For more details,
 see the full text of the licenses at
 L<http://www.perlfoundation.org/artistic_license_1_0> and
-L<http://www.gnu.org/licenses/gpl-2.0.html>.
+L<http://www.gnu.org/licenses/gpl-2.0.html> 
 
 This program is distributed in the hope that it will be useful, but
 it is provided "as is" and without any express or implied warranties.

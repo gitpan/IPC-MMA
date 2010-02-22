@@ -1726,9 +1726,9 @@ mm_array_splice (array, offset, length, ...)
         SV *delSVs[del_count];
         UV add_count = items>3 ? items-3 : 0;
         SV *addSVs[add_count];
-        int i, j=0;
+        int i;
     PPCODE:
-        for (i=0; i < add_count; i++) addSVs[i] = ST(i+3);
+        for (i=0; i<add_count; i++) addSVs[i] = ST(i+3);
         if (!mm_array_splice (array,index,del_count,delSVs,add_count,addSVs,ix&1)) {
             if (PL_dowarn && mm_error()) warn ("IPC::MMA: %s", mm_error());
             del_count = 0;
@@ -1737,7 +1737,7 @@ mm_array_splice (array, offset, length, ...)
            means just return all of them in either scalar or array mode */
         if (del_count || GIMME_V == G_ARRAY) {
             EXTEND (SP, del_count);
-            while (j < del_count) XPUSHs(sv_2mortal(delSVs[j++]));
+            for (i=0; i<del_count; i++) XPUSHs(sv_2mortal(delSVs[i]));
         } else XPUSHs (&PL_sv_undef);
 
 SV *

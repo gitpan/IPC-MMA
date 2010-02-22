@@ -1,9 +1,15 @@
-IPC::MMA is Copyright (C) 2008-2009, Craig MacKenna <craig@animalhead.com>
+IPC::MMA is Copyright (C) 2008-2010, Craig MacKenna <craig@animalhead.com>
 
 DESCRIPTION
 
-  IPC::MMA provides inter-process shared data using Ralf Engelschall's
-  mm library, allowing data to be shared in a convenient way.
+  IPC::MMA allows data to be shared among related Unix/Linux processes
+  in a straightforward way.  It provides methods to create and
+  destroy shared memory segments and to create, access, and maintain
+  data structures within segments.  Perl scalars, arrays, and hashes
+  can be stored in shared memory.  There are six possible kinds of
+  arrays: general-purpose scalars, signed or unsigned integers,
+  floating-point numbers, fixed-length strings/records, and single-bit
+  booleans.
 
 LICENSE INFORMATION
 
@@ -74,7 +80,7 @@ INSTALLATION
 
 
 NOTES
-    This module requires perl 5.6 or later.  (5.8 recommended)
+    This module requires perl 5.6 or later.
 
     The initial use of the array functions of this module was to track
     related-file accesses on our Apache web server, and thus optimize
@@ -82,4 +88,4 @@ NOTES
     in the future (its working name is Apache2::CloseKeepAlive).
 
     Craig MacKenna <craig@animalhead.com>
-    Nov 13 2009
+    Jan 4 2010
