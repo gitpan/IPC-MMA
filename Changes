@@ -1,8 +1,8 @@
 Revision history for IPC::MMA
 
-0.8   Feb 27 2010
+0.81  Feb 27 2010
       * Added an Example to the pod documentation (a user suggested 
-        this, it should also raise IPC::MMA's Qwalitee leverl :-)
+        this, it should also raise IPC::MMA's Qwalitee level :-)
       * Undid some changes to C compiler testing in Makefile.PL,
         that were a bad idea.
 
