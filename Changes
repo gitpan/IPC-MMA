@@ -1,5 +1,11 @@
 Revision history for IPC::MMA
 
+0.8   Feb 27 2010
+      * Added an Example to the pod documentation (a user suggested 
+        this, it should also raise IPC::MMA's Qwalitee leverl :-)
+      * Undid some changes to C compiler testing in Makefile.PL,
+        that were a bad idea.
+
 0.7   Feb 21 2010
       * Improved Makefile.PL to check more deeply for the presence 
         and completeness of the mm library, to work around an Unknown 

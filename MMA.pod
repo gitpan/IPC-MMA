@@ -1089,6 +1089,77 @@ interpreter, which does the wrapping before making the call.
 FWIW, the I<ALIAS:> option of the XS interface made these entry
 points really easy to provide.
 
+=head1 EXAMPLE
+
+This section describes how the author uses IPC::MMA on his Apache2
+website, particularly how easy it was to share the cache hash of the
+Image::Size module.
+
+Under the Apache2 server, the best place for doing things like setting
+up shared data structures is in a PostConfigHandler.  The site uses
+mod_perl2.
+
+  # in httpd.conf:
+    PerlModule            Central
+    PerlPostConfigHandler Central::post_config
+
+  # in the Central module:
+    use IPC::MMA qw(:all);
+    use Image::Size();
+    use constant MM_SIZE => ((1<<16) - 400);
+
+    # globals that stick around for the life of the process
+    our $mm;
+    my $image_size_hash;
+
+    sub post_config {
+
+      $mm = mm_create (MM_SIZE, "/home/me/var/mm_apache_lockfile")
+          or die "can't create shared memory: $! ".mm_error;
+      $image_size_hash = mm_make_hash($mm)
+          or die "Can't make hash: ".mm_error;
+
+      # tie a hash in another module
+      #   The other module wouldn't even have to know.
+      #   The only requirement is that the module doesn't tie the hash
+      #   to something else.
+      tie %Image::Size::CACHE, "IPC::MM::Hash", $image_size_hash
+          or die "Can't tie hash: $!".mm_error;
+
+      return Apache2::Const::OK;
+    }
+
+This code executes before Apache2 forks to create the multiple child 
+processes that actually serve HTTP requests.  The site uses the 
+prefork MPM.
+
+Image::Size tells other mod_perl modules the height and width of the 
+various images on the site.  The cache lets it do this more quickly 
+than if it had to access a file each time it's called.  The 
+advantage of sharing the hash among the child processes is that 
+the cache fills about 10 times faster after a restart than it would 
+without IPC::MMA.  (The site maintains a base of 10 child processes.) 
+
+Once you start using shared memory in a forked application like Apache,
+the number of things for which it's used tend to multiply.  The 
+author's site also includes in shared memory:
+
+=over 4
+
+=item * hashes of products that are shown on various category pages,
+
+=item * hashes of products for JavaScript-driven drop-down and pop-up 
+        links,
+
+=item * modification dates of external data files, for automatic 
+        updating if a file is changed, and
+
+=item * arrays of very-interactively-shared data for the author's 
+        Apache2::CloseKeepAlive module, which he hopes to upload to 
+        CPAN sometime in 2010.
+
+=back
+
 =head1 PREREQUISITE
 
 IPC::MMA is based on Ralf Engelschall's I<mm> library, which is
@@ -1123,7 +1194,7 @@ This module is free software; you may redistribute it and/or
 modify it under the same terms as Perl 5.10.1.  For more details,
 see the full text of the licenses at
 L<http://www.perlfoundation.org/artistic_license_1_0> and
-L<http://www.gnu.org/licenses/gpl-2.0.html> 
+L<http://www.gnu.org/licenses/gpl-2.0.html>
 
 This program is distributed in the hope that it will be useful, but
 it is provided "as is" and without any express or implied warranties.
